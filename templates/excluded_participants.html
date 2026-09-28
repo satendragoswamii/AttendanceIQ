@@ -1,0 +1,580 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Excluded Participants - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<style>
+/* Excluded Participants Styles */
+.excluded-header {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.excluded-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* Main Grid */
+.excluded-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 1rem;
+    height: calc(100vh - 200px);
+}
+
+/* Add Panel */
+.add-panel {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.add-section {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.add-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.add-section h6 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+/* List Panel */
+.list-panel {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.list-header {
+    padding: 0.75rem 1rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.list-header h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Search and Filter */
+.filter-bar {
+    padding: 0.5rem 1rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Table */
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.excluded-table {
+    width: 100%;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.excluded-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    z-index: 5;
+}
+
+.excluded-table th {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.excluded-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.excluded-table tbody tr:hover {
+    background: var(--bg-elevated);
+}
+
+/* Block Badge */
+.block-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.block-badge.blocked {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.block-badge.excluded {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+/* Toggle Switch */
+.block-toggle {
+    cursor: pointer;
+}
+
+/* Bulk Actions */
+.bulk-actions {
+    padding: 0.5rem 1rem;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    padding: 2rem;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Info Box */
+.info-box {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.info-box strong {
+    color: var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .excluded-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .add-panel {
+        max-height: 300px;
+    }
+    
+    .list-panel {
+        min-height: 400px;
+    }
+}
+</style>
+
+<!-- Header -->
+<div class="excluded-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h2><i class="fas fa-user-slash me-2"></i>Excluded Participants</h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('manage_batches') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-layer-group me-1"></i>Batches
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-home me-1"></i>Home
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Main Grid -->
+<div class="excluded-grid">
+    <!-- Left: Add Panel -->
+    <div class="add-panel">
+        <!-- Info Box -->
+        <div class="info-box mb-3">
+            <i class="fas fa-info-circle me-1"></i>
+            <strong>Excluded:</strong> Hidden from attendance sheet (Sheet2) only.<br>
+            <i class="fas fa-ban me-1 mt-1" style="color: #ef4444;"></i>
+            <strong>Permanently Blocked:</strong> Hidden from BOTH raw data (Sheet1) AND attendance sheet.
+        </div>
+        
+        <!-- Single Add -->
+        <div class="add-section">
+            <h6><i class="fas fa-user-plus me-1 text-primary"></i>Add Single</h6>
+            <form method="POST" action="{{ url_for('add_excluded') }}">
+                {{ csrf_field() }}
+                <div class="mb-2">
+                    <select name="identifier_type" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                        <option value="email" selected>Email</option>
+                        <option value="name">Name</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <input type="text" name="identifier" class="form-control form-control-sm" placeholder="Enter email or name..." required style="font-size: 0.8rem;">
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="is_permanently_blocked" value="1" id="blockSingle">
+                    <label class="form-check-label" for="blockSingle" style="font-size: 0.75rem;">
+                        <i class="fas fa-ban me-1" style="color: #ef4444;"></i>Permanently Block
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm w-100" style="font-size: 0.8rem;">
+                    <i class="fas fa-plus me-1"></i>Add
+                </button>
+            </form>
+        </div>
+        
+        <!-- Bulk Add -->
+        <div class="add-section">
+            <h6><i class="fas fa-users me-1 text-success"></i>Add Multiple</h6>
+            <form method="POST" action="{{ url_for('bulk_add_excluded') }}">
+                {{ csrf_field() }}
+                <div class="mb-2">
+                    <select name="identifier_type" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                        <option value="email" selected>Emails</option>
+                        <option value="name">Names</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <textarea name="identifiers" class="form-control form-control-sm" rows="3" 
+                              placeholder="One per line or comma-separated..." style="font-size: 0.8rem; resize: none;"></textarea>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="is_permanently_blocked" value="1" id="blockBulk">
+                    <label class="form-check-label" for="blockBulk" style="font-size: 0.75rem;">
+                        <i class="fas fa-ban me-1" style="color: #ef4444;"></i>Permanently Block All
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-success btn-sm w-100" style="font-size: 0.8rem;">
+                    <i class="fas fa-plus-circle me-1"></i>Add All
+                </button>
+            </form>
+        </div>
+        
+        <!-- Upload File -->
+        <div class="add-section">
+            <h6><i class="fas fa-file-upload me-1 text-warning"></i>Upload File</h6>
+            <form method="POST" action="{{ url_for('upload_excluded') }}" enctype="multipart/form-data">
+                {{ csrf_field() }}
+                <div class="mb-2">
+                    <select name="identifier_type" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                        <option value="email" selected>Emails</option>
+                        <option value="name">Names</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <input type="file" name="file" class="form-control form-control-sm" accept=".csv,.xlsx,.xls" style="font-size: 0.8rem;">
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="is_permanently_blocked" value="1" id="blockUpload">
+                    <label class="form-check-label" for="blockUpload" style="font-size: 0.75rem;">
+                        <i class="fas fa-ban me-1" style="color: #ef4444;"></i>Permanently Block All
+                    </label>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('download_excluded_template') }}" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 0.75rem;">
+                        <i class="fas fa-download me-1"></i>Template
+                    </a>
+                    <button type="submit" class="btn btn-warning btn-sm flex-grow-1" style="font-size: 0.75rem;">
+                        <i class="fas fa-upload me-1"></i>Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: List Panel -->
+    <div class="list-panel">
+        <div class="list-header">
+            <h5>
+                <i class="fas fa-list me-2"></i>Current Exclusions
+                <span class="badge bg-primary ms-2" style="font-size: 0.7rem;">{{ excluded|length }}</span>
+            </h5>
+            {% if excluded %}
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('export_excluded_participants') }}" class="btn btn-outline-primary btn-sm" style="font-size: 0.75rem;">
+                    <i class="fas fa-file-export me-1"></i>Export
+                </a>
+                <form method="POST" action="{{ url_for('clear_all_excluded') }}" onsubmit="return confirm('Clear ALL exclusions?');" class="d-inline">
+                    {{ csrf_field() }}
+                    <button type="submit" class="btn btn-outline-danger btn-sm" style="font-size: 0.75rem;">
+                        <i class="fas fa-trash me-1"></i>Clear All
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" id="searchExcluded" class="form-control form-control-sm" placeholder="Search..." style="max-width: 200px; font-size: 0.8rem;">
+            <select id="filterType" class="form-select form-select-sm" style="max-width: 120px; font-size: 0.8rem;">
+                <option value="all">All Types</option>
+                <option value="email">Emails</option>
+                <option value="name">Names</option>
+            </select>
+            <select id="filterBlock" class="form-select form-select-sm" style="max-width: 150px; font-size: 0.8rem;">
+                <option value="all">All Status</option>
+                <option value="blocked">Blocked Only</option>
+                <option value="excluded">Excluded Only</option>
+            </select>
+        </div>
+        
+        <!-- Table -->
+        <div class="table-container">
+            {% if excluded %}
+            <table class="excluded-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll(this)">
+                        </th>
+                        <th>Identifier</th>
+                        <th style="width: 80px;">Type</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 130px;">Added</th>
+                        <th style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="excludedTableBody">
+                    {% for item in excluded %}
+                    <tr data-id="{{ item.id }}" 
+                        data-identifier="{{ item.identifier|lower }}"
+                        data-type="{{ item.identifier_type }}"
+                        data-blocked="{{ item.is_permanently_blocked or 0 }}">
+                        <td>
+                            <input type="checkbox" class="form-check-input item-checkbox" value="{{ item.id }}">
+                        </td>
+                        <td>
+                            {% if item.identifier_type == 'email' %}
+                            <i class="fas fa-envelope me-1" style="color: var(--info-color); font-size: 0.7rem;"></i>
+                            {% else %}
+                            <i class="fas fa-user me-1" style="color: var(--text-secondary); font-size: 0.7rem;"></i>
+                            {% endif %}
+                            <span style="font-size: 0.8rem;">{{ item.identifier }}</span>
+                        </td>
+                        <td>
+                            <span class="badge {% if item.identifier_type == 'email' %}bg-info{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
+                                {{ item.identifier_type|title }}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('toggle_block', participant_id=item.id) }}" class="d-inline">
+                                {{ csrf_field() }}
+                                <button type="submit" class="block-badge {% if item.is_permanently_blocked %}blocked{% else %}excluded{% endif %}" 
+                                        style="border: none; cursor: pointer;" title="Click to toggle">
+                                    {% if item.is_permanently_blocked %}
+                                    <i class="fas fa-ban me-1"></i>Blocked
+                                    {% else %}
+                                    <i class="fas fa-minus-circle me-1"></i>Excluded
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            <small style="font-size: 0.7rem; color: var(--text-secondary);">{{ item.created_at[:16] }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="editItem({{ item.id }}, '{{ item.identifier }}', '{{ item.identifier_type }}')" style="font-size: 0.7rem;" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <form method="POST" action="{{ url_for('delete_excluded', participant_id=item.id) }}" class="d-inline" onsubmit="return confirm('Remove?');">
+                                    {{ csrf_field() }}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size: 0.7rem;" title="Remove">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-user-check"></i>
+                <p style="font-size: 0.9rem;">No exclusions yet</p>
+                <p style="font-size: 0.8rem;">Add participants to exclude from attendance reports</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if excluded %}
+        <!-- Bulk Actions -->
+        <div class="bulk-actions">
+            <span class="text-muted" style="font-size: 0.75rem;">
+                <span id="selectedCount">0</span> selected
+            </span>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-danger btn-sm" id="bulkBlock" onclick="bulkToggleBlock(true)" disabled style="font-size: 0.75rem;">
+                    <i class="fas fa-ban me-1"></i>Block Selected
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="bulkUnblock" onclick="bulkToggleBlock(false)" disabled style="font-size: 0.75rem;">
+                    <i class="fas fa-undo me-1"></i>Unblock Selected
+                </button>
+                <button class="btn btn-danger btn-sm" id="bulkDelete" onclick="bulkDelete()" disabled style="font-size: 0.75rem;">
+                    <i class="fas fa-trash me-1"></i>Delete Selected
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Exclusion</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm" method="POST">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Type</label>
+                        <select name="identifier_type" id="editType" class="form-select form-select-sm">
+                            <option value="email">Email</option>
+                            <option value="name">Name</option>
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Identifier</label>
+                        <input type="text" name="identifier" id="editIdentifier" class="form-control form-control-sm" required>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Search and Filter
+const searchInput = document.getElementById('searchExcluded');
+const filterType = document.getElementById('filterType');
+const filterBlock = document.getElementById('filterBlock');
+
+function applyFilters() {
+    const query = searchInput.value.toLowerCase();
+    const typeFilter = filterType.value;
+    const blockFilter = filterBlock.value;
+    
+    document.querySelectorAll('#excludedTableBody tr').forEach(row => {
+        const identifier = row.dataset.identifier;
+        const type = row.dataset.type;
+        const blocked = row.dataset.blocked === '1';
+        
+        let show = true;
+        if (query && !identifier.includes(query)) show = false;
+        if (typeFilter !== 'all' && type !== typeFilter) show = false;
+        if (blockFilter === 'blocked' && !blocked) show = false;
+        if (blockFilter === 'excluded' && blocked) show = false;
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+searchInput?.addEventListener('input', applyFilters);
+filterType?.addEventListener('change', applyFilters);
+filterBlock?.addEventListener('change', applyFilters);
+
+// Select All
+function toggleSelectAll(checkbox) {
+    document.querySelectorAll('#excludedTableBody tr:not([style*="display: none"]) .item-checkbox').forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateSelection();
+}
+
+// Update Selection Count
+function updateSelection() {
+    const checked = document.querySelectorAll('.item-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = checked;
+    document.getElementById('bulkBlock').disabled = checked === 0;
+    document.getElementById('bulkUnblock').disabled = checked === 0;
+    document.getElementById('bulkDelete').disabled = checked === 0;
+}
+
+document.querySelectorAll('.item-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelection);
+});
+
+// Bulk Toggle Block
+// One request for the whole selection: submitting a form per row only ever
+// applied the first, because the navigation it starts cancels the rest.
+function bulkToggleBlock(block) {
+    const ids = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+
+    if (!confirm(`${block ? 'Block' : 'Unblock'} ${ids.length} participant(s)?`)) return;
+
+    postForm('{{ url_for("bulk_toggle_block_excluded") }}', {
+        participant_ids: ids.join(','),
+        block: block ? '1' : '0'
+    });
+}
+
+// Bulk Delete
+function bulkDelete() {
+    const ids = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} exclusion(s)?`)) return;
+
+    postForm('{{ url_for("bulk_delete_excluded") }}', { participant_ids: ids.join(',') });
+}
+
+// Edit Item
+function editItem(id, identifier, type) {
+    const form = document.getElementById('editForm');
+    form.action = `/admin/excluded_participants/edit/${id}`;
+    document.getElementById('editIdentifier').value = identifier;
+    document.getElementById('editType').value = type;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+</script>
+{% endblock %}

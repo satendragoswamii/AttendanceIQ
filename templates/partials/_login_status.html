@@ -1,0 +1,36 @@
+{% if not session.user_id %}
+<div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+    <div>
+        <i class="fas fa-info-circle me-2"></i>
+        <span class="small">Demo mode. File processing requires login.</span>
+    </div>
+    <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-light ms-2 py-1 px-2">
+        <i class="fas fa-sign-in-alt me-1"></i>Login
+    </a>
+</div>
+{% else %}
+<div class="alert alert-success d-flex align-items-center py-2 px-3 mb-3">
+    <div>
+        <i class="fas fa-user-check me-2"></i>
+        {% set first_name = session.first_name or session.user_id %}
+        {% set remaining = get_remaining_time(session.user_id) %}
+        {% set last_activity = session.last_activity %}
+        <span class="small">
+            Logged in as <strong>{{ first_name }}</strong> ({{ session.role|title }})
+            {% if remaining and remaining != 'Permanent' %}
+                <span class="badge bg-warning text-dark ms-2">
+                    <i class="fas fa-clock me-1"></i>Access expires in: {{ remaining }}
+                </span>
+            {% elif session.role == 'superadmin' %}
+                <span class="badge bg-success ms-2">
+                    <i class="fas fa-infinity me-1"></i>Access: Permanent
+                </span>
+            {% else %}
+                <span class="badge bg-secondary ms-2">
+                    <i class="fas fa-info-circle me-1"></i>Access: Active (no expiry set)
+                </span>
+            {% endif %}
+        </span>
+    </div>
+</div>
+{% endif %}

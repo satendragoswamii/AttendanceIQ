@@ -1,0 +1,306 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Email Directory - Tango{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('tango.static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "_tango_nav.html" %}
+
+<div class="tg-page-header">
+    <h2><i class="fas fa-address-book me-2"></i>Email Directory</h2>
+    <p>Mark faculty emails as Male or Female so invites automatically greet them as "Sir" or "Ma'am". Name is kept for your records only &mdash; it is never mentioned inside the generated emails.</p>
+</div>
+
+<!-- Saved Emails (primary) -->
+<div class="tg-grid">
+    <div class="tg-card">
+        <h2 class="tg-card-title"><i class="fas fa-table"></i>Saved Emails ({{ total_items }})</h2>
+
+        <div class="tg-search-wrap">
+            <form method="GET" action="{{ url_for('tango.emails_list') }}" class="input-group input-group-sm" id="emailSearchForm" autocomplete="off">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" name="search" id="emailSearchInput" class="form-control form-control-sm" placeholder="Search by name or email…" value="{{ search }}">
+                {% if search %}<a href="{{ url_for('tango.emails_list') }}" class="btn btn-outline-secondary btn-sm" title="Clear search"><i class="fas fa-times"></i></a>{% endif %}
+            </form>
+            <ul class="tg-search-suggestions" id="searchSuggestions"></ul>
+        </div>
+
+        {% if emails %}
+        <div class="table-responsive tg-table-scroll" style="max-height: 620px;">
+            <table class="tg-schema-table">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Salutation</th><th>Added</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for e in emails %}
+                    <tr>
+                        <td>{{ e.name or "—" }}</td>
+                        <td>{{ e.email }}</td>
+                        <td><span class="badge {{ 'tg-badge-male' if e.gender == 'M' else 'tg-badge-female' }}">{{ "Sir" if e.gender == "M" else "Ma'am" }}</span></td>
+                        <td>{{ e.created_at[:10] }}</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Edit" onclick='editEmail({{ e.id }}, {{ e.name|tojson }}, {{ e.email|tojson }}, {{ e.gender|tojson }})'><i class="fas fa-edit"></i></button>
+                                <form method="POST" action="{{ url_for('tango.emails_delete', email_id=e.id) }}" onsubmit="return confirm('Remove this email?');">
+                                    {{ csrf_field() }}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if total_pages > 1 %}
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {{ 'disabled' if page <= 1 }}">
+                    <a class="page-link" href="{{ url_for('tango.emails_list', page=page-1, search=search) if page > 1 else '#' }}">&laquo; Prev</a>
+                </li>
+                <li class="page-item disabled"><span class="page-link">Page {{ page }} of {{ total_pages }}</span></li>
+                <li class="page-item {{ 'disabled' if page >= total_pages }}">
+                    <a class="page-link" href="{{ url_for('tango.emails_list', page=page+1, search=search) if page < total_pages else '#' }}">Next &raquo;</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% elif search %}
+        <p class="text-secondary">No emails match "{{ search }}". <a href="{{ url_for('tango.emails_list') }}">Clear search</a></p>
+        {% else %}
+        <p class="text-secondary">No emails saved yet. Add some below.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Emails (secondary, compact, tabbed) -->
+<div class="tg-grid">
+    <div class="tg-card">
+        <h2 class="tg-card-title" id="singleFormTitle"><i class="fas fa-user-plus"></i>Add Emails</h2>
+
+        <div class="tg-tabs">
+            <button type="button" class="tg-tab-btn active" data-tab="single">Single Entry</button>
+            <button type="button" class="tg-tab-btn" data-tab="bulk">Bulk Paste</button>
+            <button type="button" class="tg-tab-btn" data-tab="import">Import File</button>
+        </div>
+
+        <div id="tabSingle" class="tg-tab-content">
+            <form method="POST" action="{{ url_for('tango.emails_add_single') }}" id="singleEmailForm">
+                {{ csrf_field() }}
+                <div class="row g-2 mb-2">
+                    <div class="col-md-5">
+                        <label for="nameInput" class="form-label mb-1">Name <span class="text-muted fw-normal">(records only)</span></label>
+                        <input type="text" name="name" id="nameInput" class="form-control form-control-sm" placeholder="e.g. Dr. Alan Turing">
+                    </div>
+                    <div class="col-md-5">
+                        <label for="emailInput" class="form-label mb-1">Email Address</label>
+                        <input type="email" name="email" id="emailInput" class="form-control form-control-sm" placeholder="turing@example.com" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-1">Salutation</label>
+                        <select id="singleGenderSelect" name="gender" class="form-select form-select-sm">
+                            <option value="M" selected>Sir</option>
+                            <option value="F">Ma'am</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" id="singleSubmitBtn">Save Email</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="cancelEditBtn" style="display:none;" onclick="resetSingleForm()">Cancel Edit</button>
+            </form>
+        </div>
+
+        <div id="tabBulk" class="tg-tab-content" style="display:none;">
+            <form method="POST" action="{{ url_for('tango.emails_add') }}">
+                {{ csrf_field() }}
+                <div class="row g-2 mb-2">
+                    <div class="col-md-9">
+                        <label for="emailsInput" class="form-label mb-1">Email Addresses (one per line)</label>
+                        <textarea name="emails" id="emailsInput" class="form-control form-control-sm" rows="4" placeholder="turing@example.com&#10;hopper@example.com" required></textarea>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">Salutation for all</label>
+                        <select name="gender" class="form-select form-select-sm">
+                            <option value="M" selected>Sir</option>
+                            <option value="F">Ma'am</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Save Emails</button>
+            </form>
+        </div>
+
+        <div id="tabImport" class="tg-tab-content" style="display:none;">
+            <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.75rem; line-height:1.5;">
+                Upload a <code>.csv</code> or <code>.xlsx</code> file with <strong>Name</strong>, <strong>Email</strong>, and <strong>Gender</strong> (Male/Female or M/F) columns. Matching emails already saved will be updated, not duplicated.
+            </p>
+            <form method="POST" action="{{ url_for('tango.emails_import') }}" enctype="multipart/form-data" class="d-flex align-items-center gap-2 flex-wrap">
+                {{ csrf_field() }}
+                <input type="file" name="file" accept=".csv,.xlsx" required class="form-control form-control-sm" style="max-width:280px;">
+                <button type="submit" class="btn btn-primary btn-sm">Import File</button>
+                <a href="{{ url_for('tango.emails_download_template') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-download me-1"></i>Sample Template
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Tabs switcher for the Add Emails card
+    const emailTabMap = { single: 'tabSingle', bulk: 'tabBulk', import: 'tabImport' };
+    document.querySelectorAll('.tg-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tg-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tg-tab-content').forEach(c => c.style.display = 'none');
+            btn.classList.add('active');
+            document.getElementById(emailTabMap[btn.dataset.tab]).style.display = 'block';
+        });
+    });
+
+    function editEmail(id, name, email, gender) {
+        document.querySelector('.tg-tab-btn[data-tab="single"]').click();
+        const form = document.getElementById('singleEmailForm');
+        form.action = '/tango/emails/edit/' + id;
+        document.getElementById('nameInput').value = name;
+        document.getElementById('emailInput').value = email;
+        document.getElementById('singleGenderSelect').value = gender === 'F' ? 'F' : 'M';
+        document.getElementById('singleFormTitle').lastChild.textContent = ' Edit Email';
+        document.getElementById('singleSubmitBtn').textContent = 'Update Email';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+        document.getElementById('singleEmailForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function resetSingleForm() {
+        const form = document.getElementById('singleEmailForm');
+        form.action = '/tango/emails/add-single';
+        document.getElementById('nameInput').value = '';
+        document.getElementById('emailInput').value = '';
+        document.getElementById('singleGenderSelect').value = 'M';
+        document.getElementById('singleFormTitle').lastChild.textContent = ' Add Emails';
+        document.getElementById('singleSubmitBtn').textContent = 'Save Email';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    // Live search suggestions for the Saved Emails directory
+    const searchInput = document.getElementById('emailSearchInput');
+    const suggestionsBox = document.getElementById('searchSuggestions');
+    let suggestDebounce = null;
+    let activeSuggestionIndex = -1;
+    let currentSuggestions = [];
+
+    function hideSuggestions() {
+        suggestionsBox.style.display = 'none';
+        suggestionsBox.innerHTML = '';
+        activeSuggestionIndex = -1;
+        currentSuggestions = [];
+    }
+
+    function selectSuggestion(item) {
+        searchInput.value = item.email;
+        hideSuggestions();
+        document.getElementById('emailSearchForm').submit();
+    }
+
+    function renderSuggestions(items) {
+        suggestionsBox.innerHTML = '';
+        currentSuggestions = items;
+        activeSuggestionIndex = -1;
+        if (!items.length) {
+            hideSuggestions();
+            return;
+        }
+        items.forEach((item) => {
+            const li = document.createElement('li');
+            li.className = 'tg-search-suggestion';
+            li.setAttribute('role', 'option');
+
+            const label = document.createElement('span');
+            label.className = 'tg-search-suggestion-label';
+            label.textContent = item.name ? `${item.name} — ${item.email}` : item.email;
+            li.appendChild(label);
+
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + (item.gender === 'M' ? 'tg-badge-male' : 'tg-badge-female');
+            badge.textContent = item.gender === 'M' ? 'Sir' : "Ma'am";
+            li.appendChild(badge);
+
+            li.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                selectSuggestion(item);
+            });
+
+            suggestionsBox.appendChild(li);
+        });
+        suggestionsBox.style.display = 'block';
+    }
+
+    async function fetchSuggestions(query) {
+        try {
+            const response = await fetch(`/tango/emails/suggest?q=${encodeURIComponent(query)}`);
+            if (!response.ok) {
+                hideSuggestions();
+                return;
+            }
+            const items = await response.json();
+            renderSuggestions(items);
+        } catch (err) {
+            console.error('Failed to fetch email suggestions:', err);
+            hideSuggestions();
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.trim();
+            clearTimeout(suggestDebounce);
+            if (!query) {
+                hideSuggestions();
+                return;
+            }
+            suggestDebounce = setTimeout(() => fetchSuggestions(query), 200);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            const items = suggestionsBox.querySelectorAll('.tg-search-suggestion');
+            if (!items.length || suggestionsBox.style.display === 'none') return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+                return;
+            } else if (e.key === 'Enter') {
+                if (activeSuggestionIndex >= 0 && currentSuggestions[activeSuggestionIndex]) {
+                    e.preventDefault();
+                    selectSuggestion(currentSuggestions[activeSuggestionIndex]);
+                }
+                return;
+            } else {
+                return;
+            }
+            items.forEach((el, idx) => el.classList.toggle('active', idx === activeSuggestionIndex));
+        });
+
+        searchInput.addEventListener('blur', () => {
+            setTimeout(hideSuggestions, 150);
+        });
+
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.trim()) {
+                fetchSuggestions(searchInput.value.trim());
+            }
+        });
+    }
+</script>
+{% endblock %}

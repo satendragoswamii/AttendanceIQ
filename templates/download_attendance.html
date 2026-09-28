@@ -1,0 +1,146 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}{{ site_settings.app_name }} - Download Attendance Reports{% endblock %}
+
+{% block content %}
+
+<!-- Statistics Toast Notification -->
+{% if session.processing_stats %}
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="statsToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+        <div class="toast-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none;">
+            <i class="fas fa-check-circle me-2" style="font-size: 1.1rem;"></i>
+            <strong class="me-auto">✓ Processing Complete!</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" style="background: white; padding: 1.25rem; border-radius: 0 0 0.375rem 0.375rem;">
+            <p class="mb-2" style="font-size: 0.95rem; font-weight: 600; color: #212529;">
+                <i class="fas fa-info-circle me-1 text-primary"></i>{{ session.processing_stats.message }}
+            </p>
+            <hr style="margin: 0.75rem 0; border-color: #dee2e6;">
+            <div style="font-size: 0.9rem; color: #495057;">
+                <p class="mb-1" style="font-weight: 600;">
+                    <i class="fas fa-chart-bar me-1 text-info"></i>Statistics:
+                </p>
+                <div style="padding-left: 1.5rem; line-height: 1.8;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><i class="fas fa-users me-1" style="color: #6c757d; font-size: 0.85rem;"></i>Total People:</span>
+                        <strong class="text-primary">{{ session.processing_stats.total_people }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><i class="fas fa-calendar-alt me-1" style="color: #6c757d; font-size: 0.85rem;"></i>Total Sessions:</span>
+                        <strong class="text-primary">{{ session.processing_stats.total_sessions }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><i class="fas fa-check me-1" style="color: #28a745; font-size: 0.85rem;"></i>Avg Present:</span>
+                        <strong class="text-success">{{ session.processing_stats.avg_present }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><i class="fas fa-times me-1" style="color: #dc3545; font-size: 0.85rem;"></i>Avg Absent:</span>
+                        <strong class="text-danger">{{ session.processing_stats.avg_absent }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-download"></i> Download Attendance Reports</h4>
+                <p class="mb-0 text-white-50">Your processed attendance reports are ready for download</p>
+            </div>
+            <div class="card-body text-center">
+                {% set current_step = 3 %}
+                {% include '_step_indicator.html' %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>Processing Complete!</strong> Your attendance reports have been generated.
+                </div>
+
+                <div class="my-4">
+                    <i class="fas fa-file-excel fa-5x text-primary"></i>
+                </div>
+
+                {% if single_file %}
+                    <h5>Attendance Report Ready</h5>
+                    <p class="text-muted">Click the button below to download your processed attendance report.</p>
+                    <div class="d-grid gap-2 col-6 mx-auto">
+                        <a href="{{ url_for('download_attendance') }}?download=true" class="btn btn-primary btn-lg">
+                            <i class="fas fa-download"></i> Download Excel Report
+                        </a>
+                        <a href="{{ url_for('attendance_generator') }}" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> Process More Files
+                        </a>
+                    </div>
+                {% elif files and files|length > 1 %}
+                    <h5>{{ files|length }} Reports Processed</h5>
+                    <p class="text-muted">The following attendance reports have been generated:</p>
+                    <div class="list-group mb-4">
+                        {% for file in files %}
+                            <a href="{{ url_for('download_attendance') }}?file={{ file.name }}&download=true" class="list-group-item list-group-item-action">
+                                <i class="fas fa-file-excel text-primary"></i> {{ file.name }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div class="d-grid gap-2 col-6 mx-auto mb-3">
+                        <a href="{{ url_for('download_attendance') }}?download=true" class="btn btn-success btn-lg">
+                            <i class="fas fa-file-archive"></i> Download All as ZIP
+                        </a>
+                        <a href="{{ url_for('attendance_generator') }}" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> Process More Files
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript to show toast on page load -->
+{% if session.processing_stats %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastEl = document.getElementById('statsToast');
+    if (toastEl) {
+        const toast = new bootstrap.Toast(toastEl, {
+            autohide: false // Keep toast visible until user closes it
+        });
+        toast.show();
+        
+        // Add smooth entrance animation
+        setTimeout(() => {
+            toastEl.style.transform = 'translateX(0)';
+            toastEl.style.opacity = '1';
+        }, 100);
+    }
+});
+</script>
+
+<style>
+/* Toast entrance animation */
+#statsToast {
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+    border: none;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    min-width: 350px;
+}
+
+#statsToast .toast-header {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+#statsToast .toast-body {
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+</style>
+{% endif %}
+
+{% endblock %}

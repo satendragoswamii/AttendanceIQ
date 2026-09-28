@@ -1,0 +1,159 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}File Management - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h2 class="mb-0"><i class="fas fa-folder me-2"></i>File Management</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('download_processed_files_zip') }}"
+                       class="btn btn-sm btn-success {% if files|selectattr('manually_deleted', 'equalto', 0)|list|length == 0 %}disabled{% endif %}"
+                       {% if files|selectattr('manually_deleted', 'equalto', 0)|list|length == 0 %}aria-disabled="true"{% endif %}>
+                        <i class="fas fa-file-archive me-1"></i>Download All ZIP
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Statistics Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>File Statistics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="stat-box text-center">
+                        <h3 class="text-primary">{{ files|length }}</h3>
+                        <p class="text-muted mb-0">Total Files</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box text-center">
+                        <h3 class="text-success">{{ "%.2f"|format(total_size_mb) }} MB</h3>
+                        <p class="text-muted mb-0">Total Size</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box text-center">
+                        <h3 class="text-warning">{{ files|selectattr('manually_deleted', 'equalto', 0)|list|length }}</h3>
+                        <p class="text-muted mb-0">Active Files</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="fas fa-trash-alt me-2"></i>Bulk Delete Files</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('delete_old_files') }}" onsubmit="return confirm('Are you sure you want to delete old files? This action cannot be undone.');">
+                {{ csrf_field() }}
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Delete files older than (days):</label>
+                        <input type="number" name="days_old" class="form-control" value="30" min="1" required>
+                        <small class="text-muted">Files created before this many days will be permanently deleted</small>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fas fa-trash me-1"></i>Delete Old Files
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Files Table Card -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Files</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>File Name</th>
+                            <th>User</th>
+                            <th>Type</th>
+                            <th>Created At</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if files %}
+                            {% for file in files %}
+                            <tr {% if file.manually_deleted %}class="table-secondary"{% endif %}>
+                                <td>{{ file.id }}</td>
+                                <td>
+                                    <i class="fas fa-file-excel text-success me-1"></i>
+                                    <strong>{{ file.file_name }}</strong>
+                                </td>
+                                <td>{{ file.user_email }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if file.processing_type == 'attendance_generation' %}bg-primary
+                                        {% elif file.processing_type == 'attendance_matching' %}bg-success
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {{ file.processing_type }}
+                                    </span>
+                                </td>
+                                <td><small>{{ file.created_at }}</small></td>
+                                <td>
+                                    {% if file.manually_deleted %}
+                                        <span class="badge bg-danger">Deleted</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not file.manually_deleted %}
+                                    <a href="{{ url_for('download_processed_file', file_id=file.id) }}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    <form method="POST" action="{{ url_for('delete_file_by_id', file_id=file.id) }}" class="d-inline" onsubmit="return confirm('Delete this file permanently?');">
+                                        {{ csrf_field() }}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">No files found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-box {
+    padding: 1rem;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+</style>
+{% endblock %}

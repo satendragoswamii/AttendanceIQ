@@ -1,0 +1,80 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Auto-detect 100% Files - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 1000px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1"><i class="fas fa-file-export me-2"></i>Auto-detect 100% matched files</h3>
+            <p class="text-muted mb-0 small">Only Smart Matcher workbooks with the <strong>100</strong> result marker are shown. Removed from the server? Push your downloaded copy back in below.</p>
+        </div>
+        <a href="{{ url_for('index', tool='final-excel-generator') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    </div>
+    <form method="POST" action="{{ url_for('process_final_excel') }}" enctype="multipart/form-data" id="finalAutoForm" data-progress="final-excel">
+        {{ csrf_field() }}
+        <input type="hidden" name="output_format" value="xlsx">
+
+        {% if files %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <strong><i class="fas fa-check-circle text-success me-1"></i>100% matched server files</strong>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllFinalFiles">Select all</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th></th><th>Filename</th><th>Created</th></tr></thead>
+                    <tbody>
+                    {% for file in files %}
+                    <tr><td><input class="final-file-check" type="checkbox" value="{{ file.id }}"></td><td class="small">{{ file.display_name }}</td><td class="small text-muted">{{ file.created_at }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">No 100% Smart Matcher files are available on the server yet. Push a previously downloaded file below to continue.</div>
+        {% endif %}
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong><i class="fas fa-upload me-1"></i>Push a file from your device</strong>
+            </div>
+            <div class="card-body py-2">
+                <p class="small text-muted mb-2">Upload the 100% matched Smart Matcher workbook you downloaded earlier -- it's processed exactly like a server file.</p>
+                <input type="file" name="excel_files" class="form-control form-control-sm" accept=".xlsx,.xls" multiple>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="fas fa-cogs me-1"></i>Generate Session Files</button>
+    </form>
+</div>
+<script>
+(function () {
+    const form = document.getElementById('finalAutoForm');
+    if (!form) return;
+    const selectAllBtn = document.getElementById('selectAllFinalFiles');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function () {
+            const inputs = Array.from(document.querySelectorAll('.final-file-check'));
+            const allChecked = inputs.length > 0 && inputs.every(input => input.checked);
+            inputs.forEach(input => { input.checked = !allChecked; });
+            this.textContent = allChecked ? 'Select all' : 'Clear selection';
+        });
+    }
+    form.addEventListener('submit', function (event) {
+        const selected = Array.from(document.querySelectorAll('.final-file-check:checked'));
+        const pushedInput = form.querySelector('input[name="excel_files"]');
+        const hasPushed = pushedInput && pushedInput.files && pushedInput.files.length > 0;
+        if (!selected.length && !hasPushed) {
+            event.preventDefault();
+            alert('Select at least one 100% matched file or push one from your device.');
+            return;
+        }
+        selected.forEach(input => {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden'; hidden.name = 'server_file_id'; hidden.value = input.value;
+            form.appendChild(hidden);
+        });
+    });
+})();
+</script>
+{% endblock %}

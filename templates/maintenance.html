@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ maintenance.heading|replace('\n', ' ') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pa-ink: #333333;
+            --pa-heading: #1a1a1a;
+            --pa-muted: #6b7280;
+            --pa-link: #2f6fdb;
+            --pa-line: #e6e8ec;
+            --pa-red: #ef5b5b;
+            --pa-window: #f4f5f7;
+            --pa-window-bar: #dfe2e8;
+            --pa-cloud: #d7dbe6;
+            --pa-brand-blue: #4aa3df;
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            background: #ffffff;
+            color: var(--pa-ink);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 56px 20px 40px;
+        }
+        .pa-wrap {
+            width: 100%;
+            max-width: 640px;
+            text-align: center;
+        }
+
+        /* Wordmark */
+        .pa-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 40px;
+            font-size: 1.55rem;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+        .pa-logo .mark { width: 34px; height: 34px; }
+        .pa-logo .python { color: var(--pa-brand-blue); font-weight: 600; }
+        .pa-logo .anywhere { color: var(--pa-heading); font-weight: 400; }
+
+        /* Illustration: clouds + browser window with red error circle */
+        .pa-illus {
+            position: relative;
+            width: 320px;
+            max-width: 100%;
+            margin: 0 auto 34px;
+        }
+        .pa-illus svg { width: 100%; height: auto; display: block; }
+
+        .pa-heading {
+            font-size: 2.15rem;
+            line-height: 1.2;
+            font-weight: 700;
+            color: var(--pa-heading);
+            margin: 0 0 26px;
+            white-space: pre-line;
+        }
+        .pa-message {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: var(--pa-muted);
+            margin: 0 auto 8px;
+            max-width: 52ch;
+            white-space: pre-line;
+        }
+
+        .pa-divider {
+            height: 1px;
+            background: var(--pa-line);
+            margin: 40px auto 26px;
+            max-width: 560px;
+        }
+        .pa-help-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--pa-heading);
+            margin: 0 0 8px;
+        }
+        .pa-help-sub {
+            font-size: 0.98rem;
+            color: var(--pa-muted);
+            margin: 0 0 10px;
+        }
+        .pa-help-link {
+            font-size: 0.98rem;
+            color: var(--pa-link);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .pa-help-link:hover { color: #1f56b0; }
+
+        @media (max-width: 480px) {
+            body { padding-top: 40px; }
+            .pa-heading { font-size: 1.7rem; }
+            .pa-illus { width: 260px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="pa-wrap" role="main">
+        <div class="pa-logo" aria-label="PythonAnywhere">
+            <svg class="mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M24 5C15 5 8 8 8 15c0 4 3 6 3 6s-4 2-4 7c0 6 8 9 17 9s17-3 17-9c0-5-4-7-4-7s3-2 3-6c0-7-7-10-16-10z"
+                      stroke="#3c4a63" stroke-width="1.6" fill="#eef3fb"/>
+                <circle cx="18" cy="18" r="1.8" fill="#3c4a63"/>
+                <circle cx="30" cy="18" r="1.8" fill="#3c4a63"/>
+                <path d="M14 30c3 2 7 3 10 3s7-1 10-3" stroke="#3c4a63" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span><span class="python">python</span><span class="anywhere">anywhere</span></span>
+        </div>
+
+        <div class="pa-illus" aria-hidden="true">
+            <svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg">
+                <!-- clouds -->
+                <g fill="var(--pa-cloud)">
+                    <ellipse cx="58" cy="78" rx="34" ry="18"/>
+                    <ellipse cx="90" cy="86" rx="26" ry="14"/>
+                    <ellipse cx="268" cy="96" rx="30" ry="16"/>
+                    <ellipse cx="240" cy="104" rx="22" ry="12"/>
+                </g>
+                <!-- little sparkle lines -->
+                <g stroke="#9db2e0" stroke-width="3" stroke-linecap="round">
+                    <line x1="250" y1="34" x2="258" y2="24"/>
+                    <line x1="266" y1="40" x2="278" y2="34"/>
+                    <line x1="262" y1="52" x2="274" y2="52"/>
+                </g>
+                <!-- browser window -->
+                <g>
+                    <rect x="96" y="46" width="128" height="104" rx="8" fill="#ffffff" stroke="var(--pa-window-bar)" stroke-width="2"/>
+                    <path d="M96 54a8 8 0 0 1 8-8h112a8 8 0 0 1 8 8v10H96z" fill="var(--pa-window)" stroke="var(--pa-window-bar)" stroke-width="2"/>
+                    <circle cx="108" cy="55" r="2.4" fill="#c3c8d2"/>
+                    <circle cx="117" cy="55" r="2.4" fill="#c3c8d2"/>
+                    <circle cx="126" cy="55" r="2.4" fill="#c3c8d2"/>
+                    <!-- red error circle -->
+                    <circle cx="160" cy="107" r="24" fill="var(--pa-red)"/>
+                    <rect x="157.6" y="94" width="4.8" height="16" rx="2.4" fill="#ffffff"/>
+                    <circle cx="160" cy="117" r="2.8" fill="#ffffff"/>
+                </g>
+            </svg>
+        </div>
+
+        <h1 class="pa-heading">{{ maintenance.heading }}</h1>
+        <p class="pa-message">{{ maintenance.message }}</p>
+
+        <div class="pa-divider"></div>
+
+        <p class="pa-help-title">Need help?</p>
+        <p class="pa-help-sub">You can find more information about accounts, billing and payments here:</p>
+        <a class="pa-help-link" href="https://help.pythonanywhere.com/" target="_blank" rel="noopener">PythonAnywhere Help</a>
+    </main>
+</body>
+</html>

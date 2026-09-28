@@ -1,0 +1,494 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Generate Invites - Tango{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('tango.static', filename='style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+{% endblock %}
+
+{% block content %}
+{% include "_tango_nav.html" %}
+
+<div class="tg-page-header">
+    <h2><i class="fas fa-envelope-open-text me-2"></i>Tango &mdash; Generate Invites</h2>
+    <p>Instantly generate bulk calendar invitations pre-formatted with session emails and Zoom join details.</p>
+</div>
+
+<div class="tg-grid tg-grid-2col">
+    <!-- Generator Card -->
+    <div class="tg-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h2 class="tg-card-title" style="margin-bottom: 0;"><i class="fas fa-upload"></i>Upload Schedule</h2>
+            <a href="{{ url_for('tango.download_template') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-download me-1"></i>Template
+            </a>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.4;">
+            Fill in the downloaded template, then drag &amp; drop it below to generate calendar invites (.ics).
+        </p>
+
+        <!-- Spinner overlay during generation with Progress Bar -->
+        <div class="tg-loading-overlay" id="loadingOverlay">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="tg-loading-text">Generating Calendar Invites...</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Creating files &amp; building ZIP package</p>
+            <div class="progress" style="width: 100%; max-width: 300px;">
+                <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <form id="inviteForm" enctype="multipart/form-data">
+            {{ csrf_field() }}
+            <!-- Drop Area -->
+            <div class="tg-dropzone" id="dropZone">
+                <div class="tg-dropzone-icon"><i class="fas fa-file-excel"></i></div>
+                <div class="tg-dropzone-text">Drag &amp; drop your Excel sheet here or <span>browse files</span></div>
+                <div class="tg-dropzone-subtext">Supports Microsoft Excel files (.xlsx)</div>
+                <input type="file" name="file" id="fileInput" class="tg-file-input" accept=".xlsx" required>
+            </div>
+
+            <!-- Selected File Metadata Card -->
+            <div class="tg-file-card" id="fileCard">
+                <div class="tg-file-info">
+                    <div class="tg-file-avatar"><i class="fas fa-file-excel"></i></div>
+                    <div>
+                        <div class="tg-file-name" id="fileName">schedule.xlsx</div>
+                        <div class="tg-file-size" id="fileSize">0 KB</div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="btnRemoveFile" title="Remove file">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Live Excel Data Preview -->
+            <div class="tg-card" id="excelPreviewContainer" style="display:none; margin-top: 1.25rem; padding: 1.1rem;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="tg-card-title" style="margin-bottom: 0;">
+                        <i class="fas fa-table"></i>Excel Sheet Preview
+                    </div>
+                    <span class="badge bg-success" id="previewRowBadge">Showing 0 rows</span>
+                </div>
+                <div class="tg-table-wrap">
+                    <table class="tg-excel-table">
+                        <thead>
+                            <tr id="previewExcelHeaders"></tr>
+                        </thead>
+                        <tbody id="previewExcelBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Error/Success Feedback Banners -->
+            <div class="tg-feedback tg-feedback-success" id="successBox">
+                <div class="tg-feedback-title"><i class="fas fa-check-circle"></i>Invite ZIP Generated successfully</div>
+                <div class="tg-feedback-message" id="successMsg">Processed sessions successfully! Your ZIP file has been downloaded.</div>
+            </div>
+
+            <div class="tg-feedback tg-feedback-error" id="errorBox">
+                <div class="tg-feedback-title"><i class="fas fa-exclamation-circle"></i>Generation Failed</div>
+                <div class="tg-feedback-message" id="errorMsg">Failed to process schedule. Please check the sheet and try again.</div>
+                <ul class="tg-feedback-list" id="errorDetailsList"></ul>
+            </div>
+
+            <!-- Email & Subject Line Template Selectors -->
+            <div class="row g-2 mb-2 mt-2">
+                <div class="col-md-6">
+                    <label for="templateSelect" class="form-label mb-1">Email Template</label>
+                    <select name="template_id" id="templateSelect" class="form-select form-select-sm">
+                        {% for t in templates %}
+                        <option value="{{ t.id }}" {% if t.is_default %}selected{% endif %}>{{ t.name }}{% if t.is_default %} (Default){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="subjectTemplateSelect" class="form-label mb-1">Subject Line Template</label>
+                    <select name="subject_template_id" id="subjectTemplateSelect" class="form-select form-select-sm">
+                        {% for st in subject_templates %}
+                        <option value="{{ st.id }}" {% if st.is_default %}selected{% endif %}>{{ st.name }}{% if st.is_default %} (Default){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Custom Subject Prefix & Location Inputs -->
+            <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                    <label for="prefixInput" class="form-label mb-1">Subject Prefix / Institution</label>
+                    <input type="text" name="prefix" id="prefixInput" class="form-control form-control-sm" value="IIMI" placeholder="e.g. IIMI, TP-CORP">
+                </div>
+                <div class="col-md-6">
+                    <label for="locationInput" class="form-label mb-1">Session Location</label>
+                    <input type="text" name="location" id="locationInput" class="form-control form-control-sm" value="Sports Complex first floor." placeholder="e.g. Sports Complex first floor.">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-1" id="btnGenerate" disabled>
+                <i class="fas fa-bolt me-2"></i>Generate Calendar ZIP
+            </button>
+        </form>
+    </div>
+
+    <!-- Reference Details Card -->
+    <div class="tg-card">
+        <h2 class="tg-card-title"><i class="fas fa-info-circle"></i>Format Reference &amp; Preview</h2>
+
+        <div class="tg-tabs">
+            <button type="button" class="tg-tab-btn active" data-tab="schema">Excel Columns</button>
+            <button type="button" class="tg-tab-btn" data-tab="preview">Invite Template Preview</button>
+        </div>
+
+        <div id="tabSchema" class="tg-tab-content">
+            <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem; line-height:1.4;">
+                Your Excel spreadsheet should include columns matching the following keywords (case-insensitive, typos like "Metting ID" are resolved automatically):
+            </p>
+            <div class="tg-table-wrap">
+                <table class="tg-schema-table">
+                    <thead>
+                        <tr>
+                            <th>Column Match</th>
+                            <th>Status</th>
+                            <th>Expected Format</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Programme</strong></td><td><span class="badge bg-danger">Required</span></td><td>Text / Batch code</td><td>IIMI_PGP_01</td></tr>
+                        <tr><td><strong>Date</strong></td><td><span class="badge bg-danger">Required</span></td><td>Standard Date</td><td>15-Jun-2026</td></tr>
+                        <tr><td><strong>Day</strong></td><td><span class="badge bg-danger">Required</span></td><td>Weekday</td><td>Monday</td></tr>
+                        <tr><td><strong>Session / Time</strong></td><td><span class="badge bg-danger">Required</span></td><td><code>[Start] to [End]</code></td><td>10:00AM to 11:30AM</td></tr>
+                        <tr><td><strong>Topic</strong></td><td><span class="badge bg-danger">Required</span></td><td>Text description</td><td>Introduction to Web Development</td></tr>
+                        <tr><td><strong>Teaching Faculty</strong></td><td><span class="badge bg-danger">Required</span></td><td>Name of Instructor</td><td>Dr. Alan Turing</td></tr>
+                        <tr><td><strong>Email</strong></td><td><span class="badge bg-danger">Required</span></td><td>Valid email address</td><td>turing@example.com</td></tr>
+                        <tr><td><strong>Zoom / Link</strong></td><td><span class="badge bg-danger">Required</span></td><td>Meeting URL</td><td>https://zoom.us/j/123456789</td></tr>
+                        <tr><td><strong>Meeting ID</strong></td><td><span class="badge bg-danger">Required</span></td><td>ID string</td><td>123 456 789</td></tr>
+                        <tr><td><strong>Pass / Code</strong></td><td><span class="badge bg-danger">Required</span></td><td>Text passcode</td><td>pass123</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tabPreview" class="tg-tab-content" style="display:none;">
+            <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem; line-height:1.4;">
+                Below is a preview of the email description that will be pre-filled into the calendar invitation body for each faculty member:
+            </p>
+            <div class="tg-preview-pane">
+                <div class="tg-preview-email">Dear Sir,
+
+I hope this message finds you well.
+
+We are delighted to extend our warm greetings to you.
+
+We are pleased to provide you with the invitation link for an upcoming session scheduled for the 15-Jun-2026. Here are the details:
+
+Batch: IIMI_PGP_01
+Day: Monday
+Topic: Introduction to Web Development
+Time: 10:00AM to 11:30AM (Indian Standard Time)
+
+To join the session, kindly register in advance by clicking on the following link:
+
+https://zoom.us/j/123456789
+
+Meeting ID: 123 456 789
+Password: pass123
+
+Upon completing the registration, you will receive a confirmation email that contains essential information on how to access the meeting.
+
+Studio Location: Sports Complex first floor.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileCard = document.getElementById('fileCard');
+    const fileNameEl = document.getElementById('fileName');
+    const fileSizeEl = document.getElementById('fileSize');
+    const btnRemoveFile = document.getElementById('btnRemoveFile');
+    const btnGenerate = document.getElementById('btnGenerate');
+    const inviteForm = document.getElementById('inviteForm');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const successBox = document.getElementById('successBox');
+    const errorBox = document.getElementById('errorBox');
+    const successMsg = document.getElementById('successMsg');
+    const errorMsg = document.getElementById('errorMsg');
+    const errorDetailsList = document.getElementById('errorDetailsList');
+
+    // Drag and drop events
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length) {
+            fileInput.files = files;
+            handleFileSelected(files[0]);
+        }
+    }, false);
+
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+            handleFileSelected(fileInput.files[0]);
+        }
+    });
+
+    function handleFileSelected(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'xlsx') {
+            showError("Invalid File Type", ["Please upload a Microsoft Excel sheet with a .xlsx extension."]);
+            resetFile();
+            return;
+        }
+
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+
+        dropZone.style.display = 'none';
+        fileCard.style.display = 'flex';
+        btnGenerate.disabled = false;
+
+        successBox.style.display = 'none';
+        errorBox.style.display = 'none';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
+                if (rows.length > 0) {
+                    renderExcelPreview(rows);
+                }
+            } catch (err) {
+                console.error("Failed to parse Excel for preview:", err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function renderExcelPreview(rows) {
+        const headers = rows[0];
+        const bodyRows = rows.slice(1, 6);
+
+        const headersEl = document.getElementById('previewExcelHeaders');
+        const bodyEl = document.getElementById('previewExcelBody');
+        const containerEl = document.getElementById('excelPreviewContainer');
+        const badgeEl = document.getElementById('previewRowBadge');
+
+        headersEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+
+        headers.forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h || "";
+            headersEl.appendChild(th);
+        });
+
+        bodyRows.forEach(row => {
+            const tr = document.createElement('tr');
+            for (let i = 0; i < headers.length; i++) {
+                const td = document.createElement('td');
+                td.textContent = row[i] !== undefined ? row[i] : "";
+                tr.appendChild(td);
+            }
+            bodyEl.appendChild(tr);
+        });
+
+        badgeEl.textContent = `Showing 1-${bodyRows.length} of ${rows.length - 1} rows`;
+        containerEl.style.display = 'block';
+    }
+
+    btnRemoveFile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetFile();
+    });
+
+    function resetFile() {
+        fileInput.value = '';
+        dropZone.style.display = 'flex';
+        fileCard.style.display = 'none';
+        btnGenerate.disabled = true;
+        document.getElementById('excelPreviewContainer').style.display = 'none';
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // Tabs switcher
+    document.querySelectorAll('.tg-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tg-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tg-tab-content').forEach(c => c.style.display = 'none');
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab === 'schema' ? 'tabSchema' : 'tabPreview').style.display = 'block';
+        });
+    });
+
+    function showError(title, messages = []) {
+        successBox.style.display = 'none';
+        errorBox.style.display = 'block';
+        errorMsg.textContent = title;
+        errorDetailsList.innerHTML = '';
+
+        messages.forEach(msg => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            errorDetailsList.appendChild(li);
+        });
+        errorBox.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Form Submit Handler via AJAX Fetch
+    inviteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        successBox.style.display = 'none';
+        errorBox.style.display = 'none';
+        loadingOverlay.style.display = 'flex';
+        btnGenerate.disabled = true;
+
+        let progress = 0;
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = '0%';
+
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.floor(Math.random() * 12) + 3;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = `${progress}%`;
+            }
+        }, 120);
+
+        const formData = new FormData(inviteForm);
+
+        try {
+            const response = await fetch('/tango/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const processed = response.headers.get('X-Processed-Count') || '0';
+                const failed = response.headers.get('X-Failed-Count') || '0';
+                const errorHeaders = response.headers.get('X-Errors');
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+
+                const timestamp = new Date().toISOString().slice(0,10);
+                const filename = `Tango_Invites_${timestamp}.zip`;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(downloadUrl);
+                }, 10000);
+
+                successBox.style.display = 'block';
+                let successText = "";
+                if (parseInt(failed) > 0) {
+                    let warnMsg = `Successfully generated ${processed} calendar invite(s). However, ${failed} rows could not be parsed:`;
+                    let errArr = errorHeaders ? errorHeaders.split(' | ') : [];
+                    successText = `${warnMsg}<br><small style="color:var(--warning-color)">${errArr.join('<br>')}</small>`;
+                } else {
+                    successText = `Successfully processed all ${processed} sessions! Your ZIP package has been generated.`;
+                }
+
+                successMsg.innerHTML = `${successText}<br><br>` +
+                    `<a href="${downloadUrl}" download="${filename}" class="btn btn-sm btn-outline-success">` +
+                    `<i class="fas fa-download me-1"></i>Download ZIP Manually</a>`;
+
+                successBox.scrollIntoView({ behavior: 'smooth' });
+                resetFile();
+            } else {
+                let errMsg = "An unexpected error occurred during processing.";
+                // Sheet problems come back as JSON from /tango/generate. Anything
+                // else - a rejected security token, a 500 - is Flask's own HTML
+                // page, where the useful sentence is the <p>, not the <title>.
+                let fromServerError = false;
+                try {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        const result = await response.json();
+                        errMsg = result.error || errMsg;
+                    } else {
+                        fromServerError = true;
+                        const text = await response.text();
+                        const doc = new DOMParser().parseFromString(text, 'text/html');
+                        const detail = doc.querySelector('body p')?.textContent?.trim() || '';
+                        const title = doc.querySelector('title')?.textContent?.trim() || '';
+                        const body = doc.querySelector('body')?.textContent?.trim() || '';
+                        errMsg = detail || title || body.substring(0, 150) || `Server Error (${response.status})`;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse error response:", e);
+                }
+                showError(fromServerError ? `Server Error (${response.status})` : "Excel Format Errors", [errMsg]);
+            }
+        } catch (error) {
+            console.error(error);
+            showError("Network/Server Error", ["Could not connect to the invite generator server. Please ensure the backend is running."]);
+        } finally {
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                if (fileInput.files.length) {
+                    btnGenerate.disabled = false;
+                }
+            }, 250);
+        }
+    });
+
+    // Real-time Preview Updater
+    const locationInput = document.getElementById('locationInput');
+    const prefixInput = document.getElementById('prefixInput');
+    const previewEmailEl = document.querySelector('.tg-preview-email');
+    const originalPreviewHtml = previewEmailEl.innerHTML;
+
+    function updatePreview() {
+        let text = originalPreviewHtml;
+        text = text.replace(/IIMI_PGP_01/g, `${prefixInput.value || "IIMI"}_PGP_01`);
+        text = text.replace(/Sports Complex first floor\./g, locationInput.value || "Sports Complex first floor.");
+        previewEmailEl.innerHTML = text;
+    }
+
+    locationInput.addEventListener('input', updatePreview);
+    prefixInput.addEventListener('input', updatePreview);
+</script>
+{% endblock %}

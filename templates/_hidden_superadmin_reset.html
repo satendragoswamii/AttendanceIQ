@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Superadmin Recovery</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0A0E27;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #1A2142;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 {
+            font-size: 1.1rem;
+            margin: 0 0 1.25rem;
+        }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #B8C5D6;
+            margin-bottom: 0.25rem;
+        }
+        input[type="password"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: #151B3B;
+            color: #FFFFFF;
+            font-size: 0.9rem;
+        }
+        button {
+            width: 100%;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 8px;
+            background: #00D9FF;
+            color: #0A0E27;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .msg {
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .msg.error { background: rgba(255,61,113,0.15); border: 1px solid rgba(255,61,113,0.4); color: #FF3D71; }
+        .msg.success { background: rgba(0,230,118,0.15); border: 1px solid rgba(0,230,118,0.4); color: #00E676; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        {% if stage == 'key' %}
+        <h1>Superadmin Recovery</h1>
+
+        {% if error %}
+        <div class="msg error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            {{ csrf_field() }}
+            <label for="key">Recovery key</label>
+            <input type="password" id="key" name="key" required autocomplete="off" autofocus>
+            <button type="submit">Continue</button>
+        </form>
+        {% else %}
+        <h1>Superadmin Password Recovery</h1>
+
+        {% if error %}
+        <div class="msg error">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+        <div class="msg success">Password updated. You can log in with the new password now.</div>
+        {% else %}
+        <form method="POST">
+            {{ csrf_field() }}
+            <input type="hidden" name="key" value="{{ key }}">
+            <label for="new_password">New password</label>
+            <input type="password" id="new_password" name="new_password" required minlength="8" autocomplete="new-password" autofocus>
+            <label for="confirm_password">Confirm password</label>
+            <input type="password" id="confirm_password" name="confirm_password" required minlength="8" autocomplete="new-password">
+            <button type="submit">Reset Password</button>
+        </form>
+        {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>

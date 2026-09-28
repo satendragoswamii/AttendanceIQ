@@ -1,0 +1,1258 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}{{ site_settings.app_name }} - Configure Attendance Sessions{% endblock %}
+
+{% block content %}
+<style>
+/* Clearance under the fixed header: the brand logo on the left and the theme
+   switcher / account icon on the right get their own band, so the account
+   dropdown opens into empty space instead of straight onto the configuration
+   card. */
+/* padding, not margin: a top margin here just collapses into the wrapper's
+   own .mt-3 and nothing moves. */
+.configure-page { padding-top: 3rem; }
+
+@media (max-width: 768px) {
+  .configure-page { padding-top: 1rem; }
+}
+
+/* Compact mode for Configure Attendance Sessions */
+.session-item .card-header{padding:4px 8px !important;}
+.session-item .card-body{padding:8px 8px !important;}
+.session-item .form-label{font-size:12px; margin-bottom:2px;}
+.session-item .form-select.form-select-sm,
+.session-item .form-control.form-control-sm{padding:2px 6px; font-size:12px; height:1.9rem;}
+.session-item .btn.btn-sm{padding:2px 6px;}
+#sessionsContainer{max-height:60vh; overflow-y:auto; padding-right:.25rem; margin-top:.5rem;}
+#sessionForm .action-bar{margin-bottom:.5rem;}
+@media (min-width: 992px){ /* lg and up */
+  .session-item .row>[class*='col-']{margin-bottom:4px;}
+}
+/* Action bar compacting */
+#sessionForm .btn{padding:4px 8px; font-size:12px;}
+#sessionForm .btn.btn-lg{padding:6px 10px; font-size:13px;} /* fallback if any left */
+#sessionForm .form-check-label, #sessionForm label{font-size:12px;}
+#sessionForm .form-control{padding:4px 6px; font-size:12px; height:2rem;}
+/* Action bar layout: single-line on desktop, wraps only on small screens */
+#sessionForm .action-bar{display:flex; align-items:center; gap:6px; flex-wrap:nowrap;}
+#sessionForm .action-bar .group{display:flex; align-items:center; gap:6px; flex-wrap:nowrap;}
+#sessionForm .no-wrap{white-space:nowrap;}
+@media (max-width: 768px){
+  #sessionForm .action-bar{flex-wrap:wrap;}
+  #sessionForm .action-bar .group{flex-wrap:wrap;}
+}
+
+/* Session item states */
+.session-item { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.session-item.session-incomplete { border-left-color: var(--error-color) !important; }
+.session-item.session-complete { border-left-color: var(--success-color) !important; }
+
+/* Collapsible body */
+.session-item.collapsed .card-body { display: none; }
+.session-item .session-header-title { cursor: pointer; user-select: none; }
+.session-item .session-header-title i { transition: transform 0.2s ease; }
+.session-item.collapsed .session-header-title i.rotate-toggle { transform: rotate(-90deg); }
+.session-move-actions{display:flex; align-items:center; gap:4px;}
+.session-move-actions .btn{width:26px; height:24px; display:inline-flex; align-items:center; justify-content:center;}
+
+/* Excel-like editable preview grid -- full-screen modal so the whole sheet is visible,
+   with real scrolling in both directions instead of a cramped fixed-height box. */
+#attendancePreviewModal .modal-content{height:100%;}
+#attendancePreviewModal .modal-body{display:flex; flex-direction:column; min-height:0; padding:0.75rem;}
+#previewFilesContainer{flex:1 1 auto; min-height:0; overflow:auto; border:1px solid var(--border-color); border-radius:6px;}
+
+/* table-layout:fixed + width:100% so the grid always fits the container's width exactly --
+   no horizontal scrollbar needed even with many columns (Shortfall Reason included). */
+.preview-table{width:100%; table-layout:fixed; font-size:0.7rem; border-collapse:collapse;}
+.preview-table thead{position:sticky; top:0; background:var(--bg-card); z-index:5;}
+.preview-table th{padding:0.3rem 0.35rem; font-size:0.6rem; font-weight:600; text-transform:uppercase; color:var(--text-secondary); border:1px solid var(--border-color); white-space:nowrap; position:sticky; top:0; overflow:hidden; text-overflow:ellipsis;}
+.preview-table td{padding:0; border:1px solid var(--border-color); vertical-align:middle;}
+.preview-cell{display:block; width:100%; height:100%; padding:0.22rem 0.35rem; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text;}
+.preview-cell:hover{background:var(--bg-elevated);}
+.preview-cell:focus{background:rgba(0, 217, 255, 0.12); box-shadow:inset 0 0 0 2px var(--primary-accent); white-space:normal; overflow:visible; position:relative; z-index:2;}
+.preview-cell.preview-cell-dirty{background:rgba(255, 193, 7, 0.15);}
+.preview-view-tab.active{background:var(--primary-accent) !important; color:#fff !important; border-color:var(--primary-accent) !important;}
+
+/* Row/column control column + buttons */
+.preview-table .preview-ctrl-col{width:26px;}
+.preview-row-del-btn{width:100%; height:100%; border:none; background:transparent; color:var(--text-secondary); cursor:pointer; font-size:0.7rem; padding:0.22rem 0;}
+.preview-row-del-btn:hover{color:var(--error-color); background:var(--bg-elevated);}
+.preview-col-del-btn{border:none; background:transparent; color:inherit; opacity:0.55; cursor:pointer; font-size:0.65rem; margin-left:2px; padding:0 2px;}
+.preview-col-del-btn:hover{opacity:1; color:var(--error-color);}
+#previewGridToolbar{display:flex; align-items:center; gap:0.4rem;}
+
+/* Sheet1 (raw log) view -- plain read-only grid, no editable cells, no row/col controls */
+.sheet1-table{width:max-content; min-width:100%; font-size:0.75rem; border-collapse:collapse;}
+.sheet1-table td{padding:0.3rem 0.5rem; border:1px solid var(--border-color); white-space:nowrap;}
+.sheet1-table tr:first-child td{font-weight:600; color:var(--text-secondary); background:var(--bg-card); position:sticky; top:0; z-index:5;}
+</style>
+<div class="row justify-content-center configure-page">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary-accent) 0%, var(--secondary-accent) 100%); color: white; padding: .4rem .6rem; border-radius: .4rem .4rem 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0" style="font-size: .95rem;"><i class="fas fa-cog me-2"></i>Configure Attendance Sessions</h4>
+                        <p class="mb-0" style="font-size: .75rem; opacity: .9;">Configure start/end and minimum duration</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body" style="padding: .75rem;">
+                {% set current_step = 2 %}
+                {% include '_step_indicator.html' %}
+                <div class="alert alert-info py-1 px-2 mb-3 small" style="border-left: 3px solid var(--info-color); background: rgba(0, 217, 255, 0.08);">
+                    <i class="fas fa-info-circle me-1"></i> Set session start/end and min duration. Use date option on the right.
+                </div>
+
+                <!-- Hidden Session Config CSV Upload Form -->
+                <form id="sessionConfigForm" method="POST" action="{{ url_for('upload_session_config') }}" enctype="multipart/form-data" style="display:none;">
+                    {{ csrf_field() }}
+                    <input type="file" id="sessionConfigFile" name="session_config_csv" accept=".csv">
+                </form>
+
+                <form id="sessionForm" method="POST" action="{{ url_for('process_attendance') }}" data-progress="attendance-process">
+                    {{ csrf_field() }}
+                    <input type="hidden" id="session_row_count" name="session_row_count" value="0">
+                    <input type="hidden" id="session_order" name="session_order" value="">
+                    <input type="hidden" id="preview_overrides" name="preview_overrides" value="">
+
+                    <div class="mb-3 action-bar">
+                        <div class="group">
+                            <button type="button" id="addSessionBtn" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus-circle me-1"></i>Add Session
+                            </button>
+                            <button type="button" id="loadConfigBtn" class="btn btn-outline-primary btn-sm" title="Load Session Config CSV">
+                                <i class="fas fa-file-csv me-1"></i>Load Config
+                            </button>
+                            <a href="{{ url_for('download_session_config_template') }}" class="btn btn-outline-secondary btn-sm" title="Download dummy config template">
+                                <i class="fas fa-download me-1"></i>Download Template
+                            </a>
+                            <span class="text-muted small"><i class="fas fa-calendar-day me-1"></i>Date option:</span>
+                            <div class="form-check form-check-inline m-0 no-wrap">
+                                <input class="form-check-input" type="radio" name="date_mode" id="date_mode_per_session" value="per_session" checked>
+                                <label class="form-check-label small" for="date_mode_per_session">Per&nbsp;session</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0 no-wrap">
+                                <input class="form-check-input" type="radio" name="date_mode" id="date_mode_global" value="global">
+                                <label class="form-check-label small" for="date_mode_global">Same&nbsp;date</label>
+                            </div>
+                            <input type="date" id="global_date" name="global_date" class="form-control form-control-sm" style="max-width:100px; display:none;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 action-bar">
+                        <div class="group">
+                            <span class="text-muted small"><i class="fas fa-stopwatch me-1"></i>Early-arrival exception:</span>
+                            <div class="form-check form-check-inline m-0 no-wrap">
+                                <input class="form-check-input" type="checkbox" id="grace_period_enabled" name="grace_period_enabled" value="1" checked>
+                                <label class="form-check-label small" for="grace_period_enabled">Enabled</label>
+                            </div>
+                            <input type="number" id="grace_period_value" name="grace_period_value" class="form-control form-control-sm" value="50" min="0" step="1" style="max-width:70px;" title="Grace period amount">
+                            <select id="grace_period_unit" name="grace_period_unit" class="form-select form-select-sm" style="max-width:100px;">
+                                <option value="seconds" selected>Seconds</option>
+                                <option value="minutes">Minutes</option>
+                            </select>
+                            <span class="text-muted" style="font-size: 11px; cursor: help;" title="A participant whose session duration falls within this amount below a session's Min. Duration is still marked Present. Uncheck to require the exact Min. Duration.">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="sessionsContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 0.5rem;">
+                        <!-- Session rows will be added here dynamically -->
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3" style="border-top: 2px solid var(--border-color);">
+                        <a href="{{ url_for('attendance_generator') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="previewAttendanceBtn" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-eye me-2"></i>Preview
+                            </button>
+                            <button type="submit" id="processAttendanceBtn" class="btn btn-primary btn-sm">
+                                <i class="fas fa-rocket me-2"></i>Process Attendance
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Preview Modal: full-screen, editable, in-browser review before generating the
+     real report. Edits made here are what actually gets generated -- if you never open
+     Preview, Process Attendance computes fresh from the raw file exactly as before. -->
+<div class="modal fade" id="attendancePreviewModal" tabindex="-1" aria-labelledby="attendancePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header py-2 flex-wrap gap-2">
+                <h5 class="modal-title" id="attendancePreviewModalLabel" style="font-size: 1rem;">
+                    <i class="fas fa-eye me-1"></i>Preview
+                </h5>
+                <div id="previewFileNav" class="d-flex align-items-center gap-1" style="display: none;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="previewPrevBtn" title="Previous file">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="small text-muted no-wrap" id="previewFileIndicator"></span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="previewNextBtn" title="Next file">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-1 ms-auto">
+                    <button type="button" class="btn btn-outline-primary btn-sm preview-view-tab active" id="previewViewAttendanceBtn" data-view="attendance">
+                        <i class="fas fa-table me-1"></i>Attendance
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm preview-view-tab" id="previewViewSheet1Btn" data-view="sheet1">
+                        <i class="fas fa-file-alt me-1"></i>Sheet1 (Raw Log)
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2 me-3">
+                    <button type="button" class="btn btn-success btn-sm" id="previewDownloadBtn">
+                        <i class="fas fa-download me-1"></i>Download Report
+                    </button>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewStatus" class="small mb-2 text-muted"></div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div id="previewFilterWrap" style="display: none; flex: 1 1 240px;">
+                        <input type="text" class="form-control form-control-sm" id="previewFilter" placeholder="Filter by participant name...">
+                    </div>
+                    <div id="previewGridToolbar" style="display: none;">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="previewAddRowBtn" title="Add a blank row">
+                            <i class="fas fa-plus me-1"></i>Row
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="previewAddColBtn" title="Add a new column">
+                            <i class="fas fa-plus me-1"></i>Column
+                        </button>
+                    </div>
+                </div>
+                <div id="previewFilesContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let sessionIndex = 0;
+    // Get mode and file names from template context
+    const mode = '{{ mode }}';
+    const fileNames = {{ file_names|tojson }} || [];
+    const sessionConfig = {{ session_config|tojson }} || [];
+    const sessionConfigTimeOnly = {{ session_config_time_only|tojson }};
+    const sessionConfigAutoGenerated = {{ session_config_auto_generated|tojson }};
+    const defaultSessionPatterns = {{ default_session_patterns|tojson }} || [];
+    const defaultTimeRequired = {{ default_time_required|tojson }};
+    
+    console.log('Mode:', mode);
+    console.log('File names:', fileNames);
+
+    const globalDateRadio = document.getElementById('date_mode_global');
+    const perSessionDateRadio = document.getElementById('date_mode_per_session');
+    const globalDateInput = document.getElementById('global_date');
+
+    // Toggle visibility of global date input based on selection
+    function updateDateModeUI() {
+        if (globalDateRadio.checked) {
+            globalDateInput.style.display = 'inline-block';
+            // Convert existing session datetime-local to time-only inputs
+            document.querySelectorAll('.session-item').forEach((el, idx) => {
+                const startEl = el.querySelector('[name^="start_time_"]');
+                const endEl = el.querySelector('[name^="end_time_"]');
+                if (startEl && startEl.type === 'datetime-local') {
+                    const startVal = startEl.value;
+                    const endVal = endEl.value;
+                    // create time inputs
+                    const startTime = document.createElement('input');
+                    startTime.type = 'time';
+                    startTime.className = startEl.className;
+                    startTime.name = startEl.name; // keep same name
+                    startTime.value = startVal ? startVal.split('T')[1] : '';
+                    startTime.required = true;
+
+                    const endTime = document.createElement('input');
+                    endTime.type = 'time';
+                    endTime.className = endEl.className;
+                    endTime.name = endEl.name;
+                    endTime.value = endVal ? endVal.split('T')[1] : '';
+                    endTime.required = true;
+
+                    // replace
+                    startEl.parentNode.replaceChild(startTime, startEl);
+                    endEl.parentNode.replaceChild(endTime, endEl);
+                }
+            });
+        } else {
+            globalDateInput.style.display = 'none';
+            // Convert time inputs back to datetime-local if possible by combining with today's date
+            document.querySelectorAll('.session-item').forEach((el, idx) => {
+                const startEl = el.querySelector('[name^="start_time_"]');
+                const endEl = el.querySelector('[name^="end_time_"]');
+                if (startEl && startEl.type === 'time') {
+                    const startVal = startEl.value;
+                    const endVal = endEl.value;
+                    const today = new Date().toISOString().split('T')[0];
+                    const startDateTime = startVal ? `${today}T${startVal}` : '';
+                    const endDateTime = endVal ? `${today}T${endVal}` : '';
+
+                    const startDT = document.createElement('input');
+                    startDT.type = 'datetime-local';
+                    startDT.className = startEl.className;
+                    startDT.name = startEl.name;
+                    startDT.value = startDateTime;
+                    startDT.required = true;
+
+                    const endDT = document.createElement('input');
+                    endDT.type = 'datetime-local';
+                    endDT.className = endEl.className;
+                    endDT.name = endEl.name;
+                    endDT.value = endDateTime;
+                    endDT.required = true;
+
+                    startEl.parentNode.replaceChild(startDT, startEl);
+                    endEl.parentNode.replaceChild(endDT, endEl);
+                }
+            });
+        }
+    }
+
+    globalDateRadio.addEventListener('change', updateDateModeUI);
+    perSessionDateRadio.addEventListener('change', updateDateModeUI);
+
+    // Early-arrival exception (grace period) enable/disable toggle
+    const gracePeriodEnabled = document.getElementById('grace_period_enabled');
+    const gracePeriodValue = document.getElementById('grace_period_value');
+    const gracePeriodUnit = document.getElementById('grace_period_unit');
+    function updateGracePeriodUI() {
+        const enabled = gracePeriodEnabled.checked;
+        gracePeriodValue.disabled = !enabled;
+        gracePeriodUnit.disabled = !enabled;
+    }
+    gracePeriodEnabled.addEventListener('change', updateGracePeriodUI);
+    updateGracePeriodUI();
+
+    document.getElementById('addSessionBtn').addEventListener('click', function() {
+        const container = document.getElementById('sessionsContainer');
+        const sessionDiv = document.createElement('div');
+        sessionDiv.className = 'card mb-2 session-item session-incomplete';
+        sessionDiv.dataset.sessionIndex = String(sessionIndex);
+        sessionDiv.style.cssText = 'border-left: 3px solid var(--primary-accent); box-shadow: var(--shadow-xs);';
+        
+        // Decide input types based on current date mode: if global, show time inputs; else show datetime-local
+        const startInputType = globalDateRadio.checked ? 'time' : 'datetime-local';
+        const endInputType = globalDateRadio.checked ? 'time' : 'datetime-local';
+
+        sessionDiv.innerHTML = `
+            <div class="card-header d-flex justify-content-between align-items-center py-2 px-3" style="background: var(--bg-elevated);">
+                <div class="session-header-title d-flex align-items-center small" style="font-weight: 600; color: var(--primary-accent);">
+                    <i class="fas fa-chevron-down me-1 rotate-toggle"></i>
+                    <i class="fas fa-calendar-day me-1"></i>
+                    <span class="session-position-label">Session ${container.querySelectorAll('.session-item').length + 1}</span>
+                </div>
+                <div class="session-move-actions">
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-session-up" title="Move up">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-session-down" title="Move down">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm remove-session" title="Remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body py-2 px-3">
+                <div class="row gx-2 gy-1 align-items-center">
+                    ${mode === 'multiple' ? `
+                    <div class="col-md-12 mb-1">
+                        <label for="file_name_${sessionIndex}" class="form-label small mb-1" style="font-weight: 600;"><i class="fas fa-file me-1"></i>Select File</label>
+                        <select class="form-select form-select-sm" id="file_name_${sessionIndex}" name="file_name_${sessionIndex}" required>
+                            <option value="">Choose a file...</option>
+                            ${fileNames.map(name => `<option value="${name}">${getFriendlyFileName(name)}</option>`).join('')}
+                        </select>
+                    </div>
+                    ` : `<input type="hidden" name="file_name_${sessionIndex}" value="${fileNames[0] || ''}">`}
+                    <div class="col-md-12 mb-1">
+                        <label for="config_select_${sessionIndex}" class="form-label small mb-1" style="font-weight: 600;"><i class="fas fa-list me-1"></i>Session Config</label>
+        				<select class="form-select form-select-sm config-select" id="config_select_${sessionIndex}" data-index="${sessionIndex}">
+                            <option value="">Choose time from default time template</option>
+                        </select>
+                    </div>
+                   <div class="col-md-4 col-lg-4">
+                       <label for="start_time_${sessionIndex}" class="form-label small mb-1" style="font-weight: 600;"><i class="fas fa-clock me-1"></i>Start Time</label>
+                       <input type="${startInputType}" class="form-control form-control-sm" id="start_time_${sessionIndex}" name="start_time_${sessionIndex}" required>
+                   </div>
+                   <div class="col-md-4">
+                       <label for="end_time_${sessionIndex}" class="form-label small mb-1" style="font-weight: 600;"><i class="fas fa-clock me-1"></i>End Time</label>
+                       <input type="${endInputType}" class="form-control form-control-sm" id="end_time_${sessionIndex}" name="end_time_${sessionIndex}" required>
+                   </div>
+                   <div class="col-md-4">
+                       <label for="time_required_${sessionIndex}" class="form-label small mb-1" style="font-weight: 600;"><i class="fas fa-stopwatch me-1"></i>Min. Duration (minutes)</label>
+                       <input type="number" class="form-control form-control-sm" id="time_required_${sessionIndex}" name="time_required_${sessionIndex}" min="0" step="0.1" value="${defaultTimeRequired}" required>
+                   </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(sessionDiv);
+        
+        // Add event listener to remove button
+        sessionDiv.querySelector('.remove-session').addEventListener('click', function() {
+            if (confirm('Remove this session?')) {
+                container.removeChild(sessionDiv);
+                updateSessionCount();
+                invalidatePreview();
+            }
+        });
+        sessionDiv.querySelector('.move-session-up').addEventListener('click', function() {
+            moveSession(sessionDiv, -1);
+        });
+        sessionDiv.querySelector('.move-session-down').addEventListener('click', function() {
+            moveSession(sessionDiv, 1);
+        });
+
+        // Header click toggles collapse/expand
+        const headerTitle = sessionDiv.querySelector('.session-header-title');
+        headerTitle.addEventListener('click', function() {
+            sessionDiv.classList.toggle('collapsed');
+        });
+        
+        // Setup config select options and listeners
+        setupConfigSelect(sessionDiv, sessionIndex);
+
+        // Hook up validation to inputs to update visual state and auto-collapse when complete
+        setupSessionValidation(sessionDiv, sessionIndex);
+
+        sessionIndex++;
+        updateSessionCount();
+        invalidatePreview();
+    });
+
+    function optionLabel(row) {
+        // Always show only time in dropdown
+        const sh = row.start_hm || (row.session_start ? row.session_start.split(' ')[1]?.slice(0,5) : '');
+        const eh = row.end_hm || (row.session_end ? row.session_end.split(' ')[1]?.slice(0,5) : '');
+        return `${sh} to ${eh} (${row.time_required} min)`;
+    }
+
+    function populateConfigOptions(selectEl, fileName) {
+        // Clear existing options except placeholder
+        selectEl.querySelectorAll('option:not(:first-child)').forEach(o => o.remove());
+        const rows = [];
+        const seenRows = new Set();
+        function addRows(sourceRows) {
+            sourceRows.forEach(row => {
+                if (mode === 'multiple' && fileName && row.file && row.file !== fileName) {
+                    return;
+                }
+                if (mode === 'multiple' && !fileName && row.file) {
+                    return;
+                }
+                const startHM = row.start_hm || (row.session_start ? row.session_start.split(' ')[1]?.slice(0,5) : '');
+                const endHM = row.end_hm || (row.session_end ? row.session_end.split(' ')[1]?.slice(0,5) : '');
+                const key = `${startHM}|${endHM}|${row.time_required}`;
+                if (seenRows.has(key)) {
+                    return;
+                }
+                seenRows.add(key);
+                rows.push(row);
+            });
+        }
+        addRows(defaultSessionPatterns);
+        addRows(sessionConfig);
+        rows.forEach(row => {
+            const opt = document.createElement('option');
+            opt.value = String(selectEl.options.length);
+            opt.textContent = optionLabel(row);
+            opt.dataset.configRow = JSON.stringify(row);
+            selectEl.appendChild(opt);
+        });
+    }
+
+    function applyConfigToRow(containerEl, idx, row) {
+        const startEl = containerEl.querySelector(`[name="start_time_${idx}"]`);
+        const endEl = containerEl.querySelector(`[name="end_time_${idx}"]`);
+        const trEl = containerEl.querySelector(`[name="time_required_${idx}"]`);
+        if (sessionConfigTimeOnly || (row.start_hm && row.end_hm)) {
+            // Time-only scheduling
+            const startHM = row.start_hm;
+            const endHM = row.end_hm;
+            if (startEl.type === 'datetime-local') {
+                // Use today's date as placeholder when per-session mode is active
+                const today = new Date().toISOString().split('T')[0];
+                startEl.value = `${today}T${startHM}`;
+                endEl.value = `${today}T${endHM}`;
+            } else {
+                // Global date mode -> inputs are time-only
+                startEl.value = startHM;
+                endEl.value = endHM;
+            }
+        } else {
+            const s = row.session_start.replace(' ', 'T');
+            const e = row.session_end.replace(' ', 'T');
+            if (startEl.type === 'datetime-local') {
+                startEl.value = s;
+                endEl.value = e;
+            } else {
+                startEl.value = s.split('T')[1].slice(0,5);
+                endEl.value = e.split('T')[1].slice(0,5);
+            }
+        }
+        trEl.value = row.time_required;
+        // If multiple mode, also set file if present
+        if (mode === 'multiple' && row.file) {
+            const fileSel = containerEl.querySelector(`#file_name_${idx}`);
+            if (fileSel && fileNames.includes(row.file)) {
+                fileSel.value = row.file;
+            }
+        }
+    }
+
+    function setupConfigSelect(sessionDiv, currentIndex) {
+        const idx = currentIndex; // before we increment global index
+        const selectEl = sessionDiv.querySelector(`#config_select_${idx}`);
+        const fileSel = sessionDiv.querySelector(`#file_name_${idx}`);
+        const fileName = fileSel ? fileSel.value : (fileNames[0] || '');
+        populateConfigOptions(selectEl, fileName);
+        // On file change, re-populate options
+        if (fileSel) {
+            fileSel.addEventListener('change', function() {
+                populateConfigOptions(selectEl, this.value);
+                // Re-run per-file session numbering now that this session's file changed
+                updateSessionCount();
+                validateSession(sessionDiv, currentIndex);
+            });
+        }
+        // On select change, apply config
+        selectEl.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.dataset.configRow) {
+                applyConfigToRow(sessionDiv, idx, JSON.parse(selectedOption.dataset.configRow));
+                validateSession(sessionDiv, idx);
+            }
+        });
+    }
+
+    function setupSessionValidation(sessionDiv, idx) {
+        const inputs = [
+            sessionDiv.querySelector(`#file_name_${idx}`),
+            sessionDiv.querySelector(`#start_time_${idx}`),
+            sessionDiv.querySelector(`#end_time_${idx}`),
+            sessionDiv.querySelector(`#time_required_${idx}`)
+        ].filter(Boolean);
+        inputs.forEach(inp => {
+            inp.addEventListener('input', () => validateSession(sessionDiv, idx));
+            inp.addEventListener('change', () => validateSession(sessionDiv, idx));
+        });
+        // Initial state
+        validateSession(sessionDiv, idx);
+    }
+
+    function validateSession(sessionDiv, idx) {
+        const fileSel = sessionDiv.querySelector(`#file_name_${idx}`);
+        const startEl = sessionDiv.querySelector(`#start_time_${idx}`);
+        const endEl = sessionDiv.querySelector(`#end_time_${idx}`);
+        const trEl = sessionDiv.querySelector(`#time_required_${idx}`);
+        let complete = true;
+        if (mode === 'multiple' && fileSel && !fileSel.value) complete = false;
+        if (!startEl || !startEl.value) complete = false;
+        if (!endEl || !endEl.value) complete = false;
+        if (!trEl || !trEl.value) complete = false;
+
+        sessionDiv.classList.remove('session-incomplete', 'session-complete');
+        if (complete) {
+            sessionDiv.classList.add('session-complete');
+            // Keep sessions expanded even when complete; user can manually collapse via header click
+        } else {
+            sessionDiv.classList.add('session-incomplete');
+            sessionDiv.classList.remove('collapsed');
+        }
+    }
+
+    function importConfigRow(row) {
+        // Add a session row then populate values
+        document.getElementById('addSessionBtn').click();
+        const idx = sessionIndex - 1;
+        const container = document.getElementById('sessionsContainer');
+        const last = container.querySelectorAll('.session-item')[container.querySelectorAll('.session-item').length - 1];
+        if (!last) return;
+        // Set inputs
+        const startEl = last.querySelector(`[name="start_time_${idx}"]`);
+        const endEl = last.querySelector(`[name="end_time_${idx}"]`);
+        const trEl = last.querySelector(`[name="time_required_${idx}"]`);
+        // Convert to appropriate input values
+        if (row.session_start && row.session_end) {
+            const s = row.session_start.replace(' ', 'T');
+            const e = row.session_end.replace(' ', 'T');
+            if (startEl.type === 'datetime-local') {
+                startEl.value = s;
+                endEl.value = e;
+            } else {
+                // global date (time-only), extract HH:MM
+                startEl.value = s.split('T')[1].slice(0,5);
+                endEl.value = e.split('T')[1].slice(0,5);
+            }
+        } else if (row.start_hm && row.end_hm) {
+            if (startEl.type === 'datetime-local') {
+                const today = new Date().toISOString().split('T')[0];
+                startEl.value = `${today}T${row.start_hm}`;
+                endEl.value = `${today}T${row.end_hm}`;
+            } else {
+                startEl.value = row.start_hm;
+                endEl.value = row.end_hm;
+            }
+        }
+        trEl.value = row.time_required;
+        // If multiple mode and row.file exists, try to set select
+        if (mode === 'multiple' && row.file) {
+            const fileSel = last.querySelector(`#file_name_${idx}`);
+            if (fileSel) {
+                // Only set if exists in fileNames
+                if (fileNames.includes(row.file)) {
+                    fileSel.value = row.file;
+                }
+            }
+        }
+        updateSessionCount();
+        validateSession(last, idx);
+    }
+
+    // Load Session Config CSV via hidden form
+    const loadConfigBtn = document.getElementById('loadConfigBtn');
+    const sessionConfigFile = document.getElementById('sessionConfigFile');
+    const sessionConfigForm = document.getElementById('sessionConfigForm');
+    if (loadConfigBtn && sessionConfigFile && sessionConfigForm) {
+        loadConfigBtn.addEventListener('click', function() {
+            sessionConfigFile.click();
+        });
+        sessionConfigFile.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                sessionConfigForm.submit();
+            }
+        });
+    }
+
+    function moveSession(sessionDiv, direction) {
+        const container = document.getElementById('sessionsContainer');
+        if (direction < 0 && sessionDiv.previousElementSibling) {
+            container.insertBefore(sessionDiv, sessionDiv.previousElementSibling);
+        } else if (direction > 0 && sessionDiv.nextElementSibling) {
+            container.insertBefore(sessionDiv.nextElementSibling, sessionDiv);
+        }
+        updateSessionCount();
+        invalidatePreview();
+        sessionDiv.scrollIntoView({ block: 'nearest' });
+    }
+
+    function getFriendlyFileName(rawName) {
+        // Stored file names are prefixed with a random hex suffix, e.g. "a1b2c3d4_myfile.csv"
+        if (!rawName) return '';
+        const separatorIndex = rawName.indexOf('_');
+        return separatorIndex !== -1 ? rawName.substring(separatorIndex + 1) : rawName;
+    }
+
+    function getSessionFileValue(item) {
+        const fileSel = item.querySelector('select[name^="file_name_"]');
+        if (fileSel) return fileSel.value;
+        const fileHidden = item.querySelector('input[type="hidden"][name^="file_name_"]');
+        return fileHidden ? fileHidden.value : '';
+    }
+
+    function updateSessionCount() {
+        const sessionItems = Array.from(document.querySelectorAll('.session-item'));
+        document.getElementById('session_row_count').value = sessionItems.length;
+        document.getElementById('session_order').value = sessionItems
+            .map(item => item.dataset.sessionIndex)
+            .filter(Boolean)
+            .join(',');
+
+        // Session numbering is per file: each uploaded file gets its own independent
+        // "Session 1, Session 2, ..." sequence based on order of appearance in the list.
+        const perFileCounters = {};
+        sessionItems.forEach((item, position) => {
+            const label = item.querySelector('.session-position-label');
+            if (label) {
+                const fileValue = getSessionFileValue(item);
+                if (fileValue) {
+                    perFileCounters[fileValue] = (perFileCounters[fileValue] || 0) + 1;
+                    const friendlyName = getFriendlyFileName(fileValue);
+                    label.textContent = `${friendlyName} — Session ${perFileCounters[fileValue]}`;
+                } else {
+                    label.textContent = `Session ${position + 1}`;
+                }
+            }
+            const upBtn = item.querySelector('.move-session-up');
+            const downBtn = item.querySelector('.move-session-down');
+            if (upBtn) upBtn.disabled = position === 0;
+            if (downBtn) downBtn.disabled = position === sessionItems.length - 1;
+        });
+    }
+
+    // Add initial session once DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // show/hide global date control based on initial selection
+        updateDateModeUI();
+        if (sessionConfigAutoGenerated && sessionConfig.length > 0) {
+            sessionConfig.forEach(row => importConfigRow(row));
+        } else {
+            document.getElementById('addSessionBtn').click();
+        }
+    });
+
+    // Before submitting, ensure we set a hidden field to indicate the selected date mode
+    document.getElementById('sessionForm').addEventListener('submit', function(e) {
+        updateSessionCount();
+        // append a hidden input for date_mode if not present
+        let dm = document.querySelector('input[name="date_mode"]:checked');
+        if (!dm) {
+            dm = document.createElement('input');
+            dm.type = 'hidden';
+            dm.name = 'date_mode';
+            dm.value = 'per_session';
+            this.appendChild(dm);
+        }
+        // If global mode is selected, ensure global_date is set
+        if (globalDateRadio.checked) {
+            const gd = document.getElementById('global_date');
+            if (!gd.value) {
+                e.preventDefault();
+                alert('Please select a global date or switch to per-session dates.');
+            }
+        }
+
+        // Show a loading state on the submit button, but only if we're actually submitting
+        if (!e.defaultPrevented) {
+            const btn = document.getElementById('processAttendanceBtn');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+                btn.disabled = true;
+            }
+        }
+    });
+
+    // ===================== Preview (editable, in-browser review) =====================
+    // Reuses the exact same session config the real "Process Attendance" submit sends,
+    // and the exact same merge/threshold logic server-side (process_sessions_for_file).
+    // Edits made in the grid are what actually gets generated: on submit, the current
+    // in-memory state of every previewed file is serialized into #preview_overrides,
+    // and /process_attendance uses it verbatim instead of recomputing that file from
+    // the raw log. A file that was never previewed (or a preview invalidated by a
+    // config change since) falls back to the normal server-side computation, unchanged.
+
+    function escapeHtmlForPreview(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    let currentPreviewFiles = [];   // [{file_name, attendance: {columns, column_labels, name_key, rows}, sheet1: {rows}}]
+    let currentPreviewIndex = 0;
+    let currentPreviewViewMode = 'attendance';   // 'attendance' (editable) or 'sheet1' (raw, read-only)
+    let previewIsValid = false;     // false the moment session config changes after a preview
+
+    function invalidatePreview() {
+        if (!previewIsValid) return;
+        previewIsValid = false;
+        const previewStatus = document.getElementById('previewStatus');
+        if (previewStatus) {
+            previewStatus.textContent = 'Session settings changed -- click Preview again to review before generating.';
+            previewStatus.className = 'small mb-2 text-warning';
+        }
+    }
+
+    function currentFileData() {
+        return currentPreviewFiles[currentPreviewIndex] || null;
+    }
+
+    function renderPreviewFileNav() {
+        const nav = document.getElementById('previewFileNav');
+        const indicator = document.getElementById('previewFileIndicator');
+        const prevBtn = document.getElementById('previewPrevBtn');
+        const nextBtn = document.getElementById('previewNextBtn');
+        if (currentPreviewFiles.length > 1) {
+            nav.style.display = '';
+            indicator.textContent = getFriendlyFileName(currentFileData().file_name) +
+                ' (' + (currentPreviewIndex + 1) + ' of ' + currentPreviewFiles.length + ')';
+            prevBtn.disabled = currentPreviewIndex === 0;
+            nextBtn.disabled = currentPreviewIndex === currentPreviewFiles.length - 1;
+        } else {
+            nav.style.display = 'none';
+        }
+    }
+
+    function isCaretAtStart() {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return true;
+        const range = sel.getRangeAt(0);
+        return range.collapsed && range.startOffset === 0;
+    }
+
+    function isCaretAtEnd(el) {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return true;
+        const range = sel.getRangeAt(0);
+        return range.collapsed && range.startOffset === (el.textContent || '').length;
+    }
+
+    function placeCaretAtEnd(el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    // cells[] is every editable cell in the currently rendered grid, in row-major DOM
+    // order, so position -> (row, col) is a simple div/mod by column count.
+    function moveFocusRelative(cells, currentCell, colCount, rowDelta, colDelta) {
+        const currentPos = cells.indexOf(currentCell);
+        if (currentPos === -1) return;
+        const rowPos = Math.floor(currentPos / colCount);
+        const colPos = currentPos % colCount;
+        const newRowPos = rowPos + rowDelta;
+        const newColPos = colPos + colDelta;
+        const totalRows = cells.length / colCount;
+        if (newRowPos < 0 || newRowPos >= totalRows || newColPos < 0 || newColPos >= colCount) return;
+        const target = cells[newRowPos * colCount + newColPos];
+        if (target) {
+            target.focus();
+            placeCaretAtEnd(target);
+        }
+    }
+
+    function wirePreviewCellEvents(tableWrap, attendanceData) {
+        const cells = Array.from(tableWrap.querySelectorAll('.preview-cell'));
+        const colCount = attendanceData.columns.length;
+
+        cells.forEach(function (cell) {
+            // Every keystroke updates the in-memory row immediately, keyed by the
+            // TRUE data row index (not the visual position, which shifts under filtering).
+            cell.addEventListener('input', function () {
+                const rowIdx = parseInt(cell.dataset.rowIdx, 10);
+                const colKey = cell.dataset.colKey;
+                attendanceData.rows[rowIdx][colKey] = cell.textContent;
+                cell.classList.add('preview-cell-dirty');
+            });
+
+            cell.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    moveFocusRelative(cells, cell, colCount, 1, 0);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    moveFocusRelative(cells, cell, colCount, -1, 0);
+                } else if (e.key === 'ArrowLeft' && isCaretAtStart()) {
+                    e.preventDefault();
+                    moveFocusRelative(cells, cell, colCount, 0, -1);
+                } else if (e.key === 'ArrowRight' && isCaretAtEnd(cell)) {
+                    e.preventDefault();
+                    moveFocusRelative(cells, cell, colCount, 0, 1);
+                }
+                // Tab / Shift+Tab: left to the browser's native tabindex order, which
+                // already follows DOM order (row-major) since every cell shares tabindex=0.
+            });
+        });
+    }
+
+    // Fixed % width per well-known column so Name/Email/Shortfall Reason get more room
+    // than a single-character session status column; anything else (session columns)
+    // splits whatever width is left over evenly. Together with table-layout:fixed this
+    // is what keeps every column -- Shortfall Reason included -- inside the visible
+    // width with no horizontal scrollbar.
+    var PREVIEW_FIXED_COLUMN_WIDTH_PCT = {
+        name: 13, email: 16, join_time: 11, leave_time: 11,
+        total_duration: 9, shortfall_reason: 22
+    };
+
+    function computePreviewColumnWidths(columns) {
+        var usedPct = 0;
+        var flexCols = [];
+        columns.forEach(function (c) {
+            if (PREVIEW_FIXED_COLUMN_WIDTH_PCT[c] != null) {
+                usedPct += PREVIEW_FIXED_COLUMN_WIDTH_PCT[c];
+            } else {
+                flexCols.push(c);
+            }
+        });
+        var remainingPct = Math.max(100 - usedPct, 10);
+        var perFlexCol = flexCols.length ? remainingPct / flexCols.length : 0;
+        var widths = {};
+        columns.forEach(function (c) {
+            widths[c] = PREVIEW_FIXED_COLUMN_WIDTH_PCT[c] != null ? PREVIEW_FIXED_COLUMN_WIDTH_PCT[c] : perFlexCol;
+        });
+        return widths;
+    }
+
+    function slugifyForPreview(label) {
+        var s = String(label).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        return s || 'col';
+    }
+
+    function addPreviewRow() {
+        var fileData = currentFileData();
+        if (!fileData) return;
+        var blankRow = {};
+        fileData.attendance.columns.forEach(function (c) { blankRow[c] = ''; });
+        fileData.attendance.rows.push(blankRow);
+        renderCurrentPreviewFile(previewFilter.value);
+    }
+
+    function deletePreviewRow(rowIdx) {
+        var fileData = currentFileData();
+        if (!fileData) return;
+        if (!confirm('Delete this row?')) return;
+        fileData.attendance.rows.splice(rowIdx, 1);
+        renderCurrentPreviewFile(previewFilter.value);
+    }
+
+    function addPreviewColumn() {
+        var fileData = currentFileData();
+        if (!fileData) return;
+        var label = prompt('New column name:');
+        if (!label || !label.trim()) return;
+        var slug = slugifyForPreview(label);
+        if (fileData.attendance.columns.indexOf(slug) !== -1) {
+            alert('A column with that name already exists.');
+            return;
+        }
+        fileData.attendance.columns.push(slug);
+        fileData.attendance.column_labels[slug] = label.trim();
+        fileData.attendance.rows.forEach(function (row) { row[slug] = ''; });
+        renderCurrentPreviewFile(previewFilter.value);
+    }
+
+    function deletePreviewColumn(colKey) {
+        var fileData = currentFileData();
+        if (!fileData) return;
+        if (colKey === fileData.attendance.name_key) {
+            alert("The participant name column can't be removed.");
+            return;
+        }
+        if (fileData.attendance.columns.length <= 1) return;
+        if (!confirm('Delete the "' + (fileData.attendance.column_labels[colKey] || colKey) + '" column?')) return;
+        var idx = fileData.attendance.columns.indexOf(colKey);
+        if (idx !== -1) fileData.attendance.columns.splice(idx, 1);
+        delete fileData.attendance.column_labels[colKey];
+        fileData.attendance.rows.forEach(function (row) { delete row[colKey]; });
+        renderCurrentPreviewFile(previewFilter.value);
+    }
+
+    function renderAttendanceView(container, attendanceData, filterQuery) {
+        const q = (filterQuery || '').trim().toLowerCase();
+        // Keep the true row index alongside each visible row so edits always write
+        // back to the right underlying row, even while the view is filtered.
+        const visibleRows = attendanceData.rows
+            .map(function (row, idx) { return { row: row, idx: idx }; })
+            .filter(function (entry) {
+                if (!q) return true;
+                const val = entry.row[attendanceData.name_key];
+                return val && String(val).toLowerCase().indexOf(q) !== -1;
+            });
+
+        const widths = computePreviewColumnWidths(attendanceData.columns);
+        const table = document.createElement('table');
+        table.className = 'preview-table';
+
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        const ctrlTh = document.createElement('th');
+        ctrlTh.className = 'preview-ctrl-col';
+        headRow.appendChild(ctrlTh);
+        attendanceData.columns.forEach(function (c) {
+            const th = document.createElement('th');
+            th.style.width = (widths[c] || 0) + '%';
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = attendanceData.column_labels[c] || c;
+            th.appendChild(labelSpan);
+            if (c !== attendanceData.name_key) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'preview-col-del-btn';
+                delBtn.title = 'Delete column';
+                delBtn.textContent = '✕';
+                delBtn.addEventListener('click', function () { deletePreviewColumn(c); });
+                th.appendChild(delBtn);
+            }
+            headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+
+        const tbody = document.createElement('tbody');
+        if (!visibleRows.length) {
+            tbody.innerHTML = '<tr><td colspan="' + Math.max(attendanceData.columns.length + 1, 1) +
+                '" class="text-center text-muted py-3">No matching rows.</td></tr>';
+        } else {
+            visibleRows.forEach(function (entry) {
+                const tr = document.createElement('tr');
+                const ctrlTd = document.createElement('td');
+                ctrlTd.className = 'preview-ctrl-col';
+                const delRowBtn = document.createElement('button');
+                delRowBtn.type = 'button';
+                delRowBtn.className = 'preview-row-del-btn';
+                delRowBtn.title = 'Delete row';
+                delRowBtn.textContent = '✕';
+                delRowBtn.addEventListener('click', function () { deletePreviewRow(entry.idx); });
+                ctrlTd.appendChild(delRowBtn);
+                tr.appendChild(ctrlTd);
+
+                attendanceData.columns.forEach(function (colKey) {
+                    const td = document.createElement('td');
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'preview-cell';
+                    cellDiv.contentEditable = 'true';
+                    cellDiv.tabIndex = 0;
+                    cellDiv.dataset.rowIdx = String(entry.idx);
+                    cellDiv.dataset.colKey = colKey;
+                    const val = entry.row[colKey];
+                    cellDiv.textContent = val == null ? '' : String(val);
+                    td.appendChild(cellDiv);
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+        wirePreviewCellEvents(container, attendanceData);
+    }
+
+    function renderSheet1View(container, sheet1Data) {
+        // Read-only: this is the untouched raw uploaded file, shown exactly as it will
+        // appear on Sheet1 of the final output -- nothing here is editable or filtered.
+        const rows = sheet1Data.rows || [];
+        if (!rows.length) {
+            container.innerHTML = '<div class="text-center text-muted py-3">No raw data to show.</div>';
+            return;
+        }
+        const table = document.createElement('table');
+        table.className = 'sheet1-table';
+        const tbody = document.createElement('tbody');
+        rows.forEach(function (rowValues) {
+            const tr = document.createElement('tr');
+            rowValues.forEach(function (val) {
+                const td = document.createElement('td');
+                td.textContent = val == null ? '' : String(val);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.appendChild(table);
+    }
+
+    function renderCurrentPreviewFile(filterQuery) {
+        const container = document.getElementById('previewFilesContainer');
+        container.innerHTML = '';
+        renderPreviewFileNav();
+
+        const fileData = currentFileData();
+        if (!fileData) {
+            container.innerHTML = '<div class="text-center text-muted py-3">No data to preview.</div>';
+            return;
+        }
+
+        const gridToolbar = document.getElementById('previewGridToolbar');
+        if (currentPreviewViewMode === 'sheet1') {
+            previewFilterWrap.style.display = 'none';
+            gridToolbar.style.display = 'none';
+            renderSheet1View(container, fileData.sheet1);
+        } else {
+            previewFilterWrap.style.display = fileData.attendance.rows.length ? '' : 'none';
+            gridToolbar.style.display = '';
+            renderAttendanceView(container, fileData.attendance, filterQuery);
+        }
+    }
+
+    const previewBtn = document.getElementById('previewAttendanceBtn');
+    const previewModalEl = document.getElementById('attendancePreviewModal');
+    const previewStatus = document.getElementById('previewStatus');
+    const previewFilterWrap = document.getElementById('previewFilterWrap');
+    const previewFilter = document.getElementById('previewFilter');
+    const previewPrevBtn = document.getElementById('previewPrevBtn');
+    const previewNextBtn = document.getElementById('previewNextBtn');
+
+    let previewModalInstance = null;
+    function getPreviewModal() {
+        if (!previewModalInstance) {
+            previewModalInstance = bootstrap.Modal.getOrCreateInstance(previewModalEl);
+        }
+        return previewModalInstance;
+    }
+
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function () {
+            updateSessionCount();
+
+            // Same global-date guard as the real submit
+            if (globalDateRadio.checked && !document.getElementById('global_date').value) {
+                alert('Please select a global date or switch to per-session dates.');
+                return;
+            }
+
+            // Nothing has changed since the last preview (e.g. the modal was just
+            // closed and reopened) -- reopen instantly with whatever's already in
+            // memory, edits included, instead of re-fetching and losing them.
+            if (previewIsValid && currentPreviewFiles.length) {
+                renderCurrentPreviewFile(previewFilter.value);
+                getPreviewModal().show();
+                return;
+            }
+
+            const formData = new FormData(document.getElementById('sessionForm'));
+            if (!formData.get('date_mode')) {
+                formData.set('date_mode', 'per_session');
+            }
+            formData.delete('preview_overrides'); // never send a stale override while fetching a fresh one
+
+            previewBtn.disabled = true;
+            previewBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+            previewFilterWrap.style.display = 'none';
+            previewStatus.textContent = 'Loading preview...';
+            previewStatus.className = 'small mb-2 text-info';
+            document.getElementById('previewFilesContainer').innerHTML = '';
+            getPreviewModal().show();
+
+            fetch('{{ url_for("preview_attendance") }}', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': '{{ csrf_token() }}' }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    previewBtn.disabled = false;
+                    previewBtn.innerHTML = '<i class="fas fa-eye me-2"></i>Preview';
+                    if (!data.success) {
+                        previewStatus.textContent = data.message || 'Could not build a preview.';
+                        previewStatus.className = 'small mb-2 text-danger';
+                        return;
+                    }
+                    currentPreviewFiles = data.files || [];
+                    currentPreviewIndex = 0;
+                    previewIsValid = true;
+                    setPreviewViewMode('attendance');
+                    const totalRows = currentPreviewFiles.reduce(function (sum, f) { return sum + f.attendance.rows.length; }, 0);
+                    const warnings = currentPreviewFiles.map(f => f.warning).filter(Boolean);
+                    previewStatus.textContent = warnings.length
+                        ? warnings.join(' ')
+                        : 'Showing ' + totalRows + ' participant(s) across ' + currentPreviewFiles.length +
+                          ' file(s). Edits here will be used when you click Process Attendance.';
+                    previewStatus.className = warnings.length ? 'small mb-2 text-warning' : 'small mb-2 text-success';
+                    previewFilter.value = '';
+                    renderCurrentPreviewFile('');
+                })
+                .catch(function (err) {
+                    previewBtn.disabled = false;
+                    previewBtn.innerHTML = '<i class="fas fa-eye me-2"></i>Preview';
+                    previewStatus.textContent = 'Error building preview: ' + err;
+                    previewStatus.className = 'small mb-2 text-danger';
+                });
+        });
+    }
+
+    if (previewFilter) {
+        previewFilter.addEventListener('input', function () {
+            renderCurrentPreviewFile(previewFilter.value);
+        });
+    }
+
+    if (previewPrevBtn) {
+        previewPrevBtn.addEventListener('click', function () {
+            if (currentPreviewIndex > 0) {
+                currentPreviewIndex--;
+                renderCurrentPreviewFile(previewFilter.value);
+            }
+        });
+    }
+
+    if (previewNextBtn) {
+        previewNextBtn.addEventListener('click', function () {
+            if (currentPreviewIndex < currentPreviewFiles.length - 1) {
+                currentPreviewIndex++;
+                renderCurrentPreviewFile(previewFilter.value);
+            }
+        });
+    }
+
+    // Sheet tabs: switch between the editable computed "Attendance" view and the
+    // read-only "Sheet1" (raw log) view, exactly like switching sheet tabs in Excel.
+    const previewViewTabs = Array.from(document.querySelectorAll('.preview-view-tab'));
+    function setPreviewViewMode(mode) {
+        currentPreviewViewMode = mode;
+        previewViewTabs.forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.view === mode);
+        });
+        renderCurrentPreviewFile(previewFilter.value);
+    }
+    previewViewTabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            setPreviewViewMode(btn.dataset.view);
+        });
+    });
+
+    // Download: apply whatever's currently in the preview (edits included) and go
+    // straight to the real generation + download, without needing to close the modal
+    // first -- this triggers the exact same submit path as the Process Attendance
+    // button, so the serialization logic below only needs to exist once.
+    const previewDownloadBtn = document.getElementById('previewDownloadBtn');
+    if (previewDownloadBtn) {
+        previewDownloadBtn.addEventListener('click', function () {
+            document.getElementById('sessionForm').requestSubmit();
+        });
+    }
+
+    // Row/column controls -- insert or remove rows/columns directly in the grid.
+    // These mutate the same in-memory objects the cell edits do, so they flow into
+    // the download exactly like any other edit.
+    const previewAddRowBtn = document.getElementById('previewAddRowBtn');
+    const previewAddColBtn = document.getElementById('previewAddColBtn');
+    if (previewAddRowBtn) {
+        previewAddRowBtn.addEventListener('click', addPreviewRow);
+    }
+    if (previewAddColBtn) {
+        previewAddColBtn.addEventListener('click', addPreviewColumn);
+    }
+
+    // Invalidate the preview the moment session config changes, so a stale override
+    // (computed/edited against a now-different configuration) can never be silently
+    // submitted. The preview grid itself lives outside #sessionForm, so edits inside it
+    // never trigger this.
+    document.getElementById('sessionForm').addEventListener('input', invalidatePreview);
+    document.getElementById('sessionForm').addEventListener('change', invalidatePreview);
+
+    // Before submitting, hand over the current (possibly edited) preview data for any
+    // file that was actually previewed, so /process_attendance uses it verbatim instead
+    // of recomputing from the raw log. Runs after the existing date_mode/global_date
+    // handling above, right before the real submit happens.
+    document.getElementById('sessionForm').addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return;
+        const overridesField = document.getElementById('preview_overrides');
+        if (previewIsValid && currentPreviewFiles.length) {
+            const overrides = {};
+            currentPreviewFiles.forEach(function (fileData) {
+                overrides[fileData.file_name] = {
+                    // "columns" carries the real column ORDER (a JSON array is order-safe);
+                    // column_labels only supplies display text per key here, since jsonify()
+                    // alphabetically re-sorts dict keys and can't be trusted for ordering.
+                    columns: fileData.attendance.columns,
+                    column_labels: fileData.attendance.column_labels,
+                    rows: fileData.attendance.rows
+                };
+            });
+            overridesField.value = JSON.stringify(overrides);
+        } else {
+            overridesField.value = '';
+        }
+    });
+</script>
+{% endblock %}

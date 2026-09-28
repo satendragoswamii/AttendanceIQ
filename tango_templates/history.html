@@ -1,0 +1,76 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Generation History - Tango{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('tango.static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "_tango_nav.html" %}
+
+<div class="tg-page-header">
+    <h2><i class="fas fa-history me-2"></i>Generation History</h2>
+    <p>See how many calendar invites have been generated, and when.</p>
+</div>
+
+<div class="tg-grid tg-grid-3col">
+    <div class="tg-stat-tile">
+        <div class="tg-stat-icon bg-gradient-primary"><i class="fas fa-layer-group"></i></div>
+        <div>
+            <div class="tg-stat-value">{{ summary.batches }}</div>
+            <div class="tg-stat-label">Total Batches</div>
+        </div>
+    </div>
+    <div class="tg-stat-tile">
+        <div class="tg-stat-icon bg-gradient-success"><i class="fas fa-file-invoice"></i></div>
+        <div>
+            <div class="tg-stat-value">{{ summary.total_ics }}</div>
+            <div class="tg-stat-label">Total ICS Generated</div>
+        </div>
+    </div>
+    <div class="tg-stat-tile">
+        <div class="tg-stat-icon bg-gradient-warning"><i class="fas fa-clock"></i></div>
+        <div>
+            <div class="tg-stat-value">{{ summary.last_run[:16].replace('T', ' ') if summary.last_run else '—' }}</div>
+            <div class="tg-stat-label">Last Run</div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.bg-gradient-success { background: linear-gradient(135deg, #10b981, #34d399); }
+.bg-gradient-warning { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+</style>
+
+<div class="tg-grid">
+    <div class="tg-card">
+        <h2 class="tg-card-title"><i class="fas fa-clipboard-list"></i>Batch Log</h2>
+        {% if history %}
+        <div class="table-responsive">
+            <table class="tg-schema-table">
+                <thead>
+                    <tr><th>Date / Time</th><th>Template</th><th>Prefix</th><th>Location</th><th>Rows</th><th>Success</th><th>Failed</th></tr>
+                </thead>
+                <tbody>
+                    {% for h in history %}
+                    <tr>
+                        <td>{{ h.generated_at[:16].replace('T', ' ') }}</td>
+                        <td>{{ h.template_name }}</td>
+                        <td>{{ h.prefix }}</td>
+                        <td>{{ h.location }}</td>
+                        <td>{{ h.total_rows }}</td>
+                        <td><span class="badge bg-success">{{ h.success_count }}</span></td>
+                        <td>{% if h.failed_count %}<span class="badge bg-danger">{{ h.failed_count }}</span>{% else %}0{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-secondary">No batches generated yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

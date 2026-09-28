@@ -1,0 +1,189 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Auto-match Server Files - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 1100px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1"><i class="fas fa-magic me-2"></i>Auto-match Attendance Files</h3>
+            <p class="text-muted mb-0 small">Generated Attendance files are arranged against suggested batches. Review or change any batch before matching. If a file was removed from the server, push your downloaded copy back in below.</p>
+        </div>
+        <a href="{{ url_for('attendance_matching') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <form method="POST" action="{{ url_for('process_attendance_matching') }}" enctype="multipart/form-data" id="autoMatcherForm" data-progress="smart-matcher">
+        {{ csrf_field() }}
+        <input type="hidden" name="match_mode" value="batch">
+        <input type="hidden" name="auto_extract" value="1">
+        <input type="hidden" name="output_format" value="xlsx">
+        <input type="hidden" name="pair_count" id="autoPairCount" value="0">
+        <div id="selectedServerFiles"></div>
+
+        {% if files %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <strong><i class="fas fa-folder-open me-1"></i>Attendance Generator files</strong>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllServerFiles">Select all</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th></th><th>File</th><th>Suggested batch</th><th>Confidence</th><th>Created</th></tr></thead>
+                    <tbody>
+                    {% for file in files %}
+                    <tr class="server-file-row" data-file-id="{{ file.id }}" data-batch-id="{{ file.suggested_batch_id or '' }}">
+                        <td><input class="server-file-check" type="checkbox"></td>
+                        <td class="small">{{ file.name }}</td>
+                        <td>
+                            <select class="form-select form-select-sm server-batch-select">
+                                <option value="">Select batch...</option>
+                                {% for batch in batches %}
+                                <option value="{{ batch.id }}" {% if batch.id == file.suggested_batch_id %}selected{% endif %}>{{ batch.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if file.suggested_batch_name %}<small class="text-success">Suggested from filename</small>{% else %}<small class="text-warning">No clear suggestion</small>{% endif %}
+                        </td>
+                        <td class="small">{{ file.suggestion_score }}%</td>
+                        <td class="small text-muted">{{ file.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">No generated Attendance files are available on the server yet. Push a previously downloaded file below to continue.</div>
+        {% endif %}
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong><i class="fas fa-upload me-1"></i>Push a file from your device</strong>
+            </div>
+            <div class="card-body py-2">
+                <p class="small text-muted mb-2">Was the Attendance Generator file removed from the server? Upload the copy you downloaded earlier and pick its batch below -- it will be matched exactly like a server file.</p>
+                <input type="file" id="pushFileInput" class="form-control form-control-sm mb-2" accept=".xlsx,.xls,.csv" multiple>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0" id="pushedFilesTable" style="display:none;">
+                        <thead><tr><th>File</th><th>Batch</th><th></th></tr></thead>
+                        <tbody id="pushedFilesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary" id="autoMatchSubmit"><i class="fas fa-exchange-alt me-1"></i>Match Selected Files</button>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    const form = document.getElementById('autoMatcherForm');
+    if (!form) return;
+
+    const batchOptions = [
+        {% for batch in batches %}{ id: {{ batch.id }}, name: {{ batch.name|tojson }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch]));
+    }
+
+    function batchSelectHtml() {
+        let html = '<option value="">Select batch...</option>';
+        batchOptions.forEach(b => { html += `<option value="${b.id}">${escapeHtml(b.name)}</option>`; });
+        return html;
+    }
+
+    const checks = () => Array.from(document.querySelectorAll('.server-file-check'));
+    const selectAllBtn = document.getElementById('selectAllServerFiles');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function () {
+            const allChecked = checks().every(input => input.checked);
+            checks().forEach(input => { input.checked = !allChecked; });
+            this.textContent = allChecked ? 'Select all' : 'Clear selection';
+        });
+    }
+
+    const pushInput = document.getElementById('pushFileInput');
+    const pushedBody = document.getElementById('pushedFilesBody');
+    const pushedTable = document.getElementById('pushedFilesTable');
+
+    pushInput.addEventListener('change', function () {
+        Array.from(pushInput.files || []).forEach(file => {
+            const tr = document.createElement('tr');
+            tr.className = 'pushed-file-row';
+            tr._pushedFile = file;
+            tr.innerHTML = `<td class="small"><i class="fas fa-file-upload me-1 text-info"></i>${escapeHtml(file.name)}</td><td><select class="form-select form-select-sm pushed-batch-select">${batchSelectHtml()}</select></td><td><button type="button" class="btn btn-sm btn-outline-danger remove-pushed-file"><i class="fas fa-times"></i></button></td>`;
+            pushedBody.appendChild(tr);
+        });
+        pushedTable.style.display = pushedBody.children.length ? '' : 'none';
+        pushInput.value = '';
+    });
+
+    pushedBody.addEventListener('click', function (event) {
+        const btn = event.target.closest('.remove-pushed-file');
+        if (!btn) return;
+        btn.closest('tr').remove();
+        pushedTable.style.display = pushedBody.children.length ? '' : 'none';
+    });
+
+    form.addEventListener('submit', function (event) {
+        const selectedServerRows = Array.from(document.querySelectorAll('.server-file-row')).filter(row => row.querySelector('.server-file-check').checked);
+        const pushedRows = Array.from(pushedBody.querySelectorAll('.pushed-file-row'));
+        const target = document.getElementById('selectedServerFiles');
+        target.innerHTML = '';
+        const oldContainer = document.getElementById('pushedFileInputs');
+        if (oldContainer) oldContainer.remove();
+
+        if (!selectedServerRows.length && !pushedRows.length) {
+            event.preventDefault();
+            alert('Select at least one Attendance file or push one from your device.');
+            return;
+        }
+
+        let index = 0;
+        for (const row of selectedServerRows) {
+            const batchId = row.querySelector('.server-batch-select').value;
+            if (!batchId) {
+                event.preventDefault();
+                alert('Select a batch for every selected file.');
+                return;
+            }
+            [['server_file_id_' + index, row.dataset.fileId], ['batch_id_' + index, batchId], ['master_source_' + index, 'batch']].forEach(([name, value]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden'; input.name = name; input.value = value;
+                target.appendChild(input);
+            });
+            index++;
+        }
+
+        const fileInputsContainer = document.createElement('div');
+        fileInputsContainer.id = 'pushedFileInputs';
+        fileInputsContainer.style.display = 'none';
+        for (const row of pushedRows) {
+            const batchId = row.querySelector('.pushed-batch-select').value;
+            if (!batchId) {
+                event.preventDefault();
+                alert('Select a batch for every pushed file.');
+                return;
+            }
+            const dt = new DataTransfer();
+            dt.items.add(row._pushedFile);
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = 'raw_file_' + index;
+            fileInput.files = dt.files;
+            fileInputsContainer.appendChild(fileInput);
+            [['batch_id_' + index, batchId], ['master_source_' + index, 'batch']].forEach(([name, value]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden'; input.name = name; input.value = value;
+                target.appendChild(input);
+            });
+            index++;
+        }
+        form.appendChild(fileInputsContainer);
+        document.getElementById('autoPairCount').value = index;
+    });
+})();
+</script>
+{% endblock %}

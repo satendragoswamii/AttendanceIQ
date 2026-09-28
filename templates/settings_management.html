@@ -1,0 +1,1348 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Settings Management - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h2 class="mb-0"><i class="fas fa-cog me-2"></i>Settings Management</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+            <p class="text-muted mt-2 mb-0">
+                <i class="fas fa-info-circle me-1"></i>
+                Configure application settings, site branding, app names, and output file formats
+            </p>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="site-settings-tab" data-bs-toggle="tab" data-bs-target="#site-settings" type="button" role="tab" aria-controls="site-settings" aria-selected="true">
+                <i class="fas fa-globe me-1"></i> Site Settings
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="landing-page-tab" data-bs-toggle="tab" data-bs-target="#landing-page" type="button" role="tab" aria-controls="landing-page" aria-selected="false">
+                <i class="fas fa-file-lines me-1"></i> Landing Page
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="app-names-tab" data-bs-toggle="tab" data-bs-target="#app-names" type="button" role="tab" aria-controls="app-names" aria-selected="false">
+                <i class="fas fa-tags me-1"></i> App Names
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="output-formats-tab" data-bs-toggle="tab" data-bs-target="#output-formats" type="button" role="tab" aria-controls="output-formats" aria-selected="false">
+                <i class="fas fa-file-export me-1"></i> Output Formats
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="processing-overlay-tab" data-bs-toggle="tab" data-bs-target="#processing-overlay" type="button" role="tab" aria-controls="processing-overlay" aria-selected="false">
+                <i class="fas fa-spinner me-1"></i> Processing Animation
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="maintenance-tab" data-bs-toggle="tab" data-bs-target="#maintenance" type="button" role="tab" aria-controls="maintenance" aria-selected="false">
+                <i class="fas fa-triangle-exclamation me-1"></i> Maintenance Mode
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="system-settings-tab" data-bs-toggle="tab" data-bs-target="#system-settings" type="button" role="tab" aria-controls="system-settings" aria-selected="false">
+                <i class="fas fa-sliders-h me-1"></i> System Settings
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="settingsTabContent">
+        
+        <!-- Tab 1: Site Settings -->
+        <div class="tab-pane fade show active" id="site-settings" role="tabpanel" aria-labelledby="site-settings-tab">
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); color: white;">
+                    <h5 class="mb-0"><i class="fas fa-globe me-2"></i>Site & Branding Settings</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Customize your site name, branding, and footer information. Changes take effect immediately.
+                    </p>
+                    
+                    <!-- App Name -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-heading me-2 text-primary"></i>Site/App Name</h6>
+                                    <small class="text-muted">Appears in header, footer, loading screen, and browser title</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="app_name">
+                                        <input type="text" name="setting_value" class="form-control" value="{{ site_settings.app_name }}" placeholder="Enter site name" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tagline -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-quote-left me-2 text-primary"></i>Header Tagline</h6>
+                                    <small class="text-muted">Small line under the site name in the header</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="app_tagline">
+                                        <input type="text" name="setting_value" class="form-control" value="{{ site_settings.app_tagline }}" placeholder="Enter tagline" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Header Brand: text or image logo -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-image me-2 text-info"></i>Header Brand</h6>
+                                    <small class="text-muted">Show the name + tagline, or your own logo image instead</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <!-- Mode switch -->
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex align-items-center gap-3 mb-3">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="brand_mode">
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="radio" name="setting_value" id="brandModeText" value="text" {% if site_settings.brand_mode != 'image' %}checked{% endif %}>
+                                            <label class="form-check-label" for="brandModeText">Name &amp; tagline</label>
+                                        </div>
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="radio" name="setting_value" id="brandModeImage" value="image" {% if site_settings.brand_mode == 'image' %}checked{% endif %} {% if not site_settings.brand_logo %}disabled{% endif %}>
+                                            <label class="form-check-label" for="brandModeImage">
+                                                Logo image
+                                                {% if not site_settings.brand_logo %}<small class="text-muted">(upload one first)</small>{% endif %}
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="btn btn-outline-primary btn-sm" style="white-space: nowrap;">
+                                            <i class="fas fa-check me-1"></i>Apply
+                                        </button>
+                                    </form>
+
+                                    {% if site_settings.brand_logo %}
+                                    <div class="d-flex align-items-center gap-3 mb-3 p-2 rounded" style="background: var(--bg-elevated);">
+                                        <img src="{{ url_for('static', filename=site_settings.brand_logo) }}" alt="Current logo" style="height: 46px; width: auto; max-width: 220px; object-fit: contain;">
+                                        <form method="POST" action="{{ url_for('remove_brand_logo') }}" onsubmit="return confirm('Remove the logo and go back to the name and tagline?');">
+                                            {{ csrf_field() }}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash me-1"></i>Remove logo
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- Upload -->
+                                    <form method="POST" action="{{ url_for('upload_brand_logo') }}" enctype="multipart/form-data" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="file" name="brand_logo" class="form-control" accept=".png,.jpg,.jpeg,.gif,.webp,.svg" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-upload me-1"></i>Upload
+                                        </button>
+                                    </form>
+                                    <small class="text-muted">PNG, JPG, GIF, WEBP or SVG &mdash; up to 2MB. Uploading switches the header to the image automatically.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fluid cursor tuning -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-water me-2 text-info"></i>Fluid Cursor</h6>
+                                    <small class="text-muted">Tuning for the fluid trail (shown when Cursor Effect includes Fluid)</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_fluid_cursor') }}" class="row g-3 align-items-center">
+                                        {{ csrf_field() }}
+                                        <div class="col-sm-6 d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="fluidSize" style="width: 64px;">Size</label>
+                                            <input type="range" id="fluidSize" name="fluid_size" class="form-range" min="10" max="60" step="1" value="{{ site_settings.fluid.fluid_size }}">
+                                            <span class="small text-muted fluid-val" data-for="fluidSize" style="min-width: 34px;">{{ site_settings.fluid.fluid_size }}</span>
+                                        </div>
+                                        <div class="col-sm-6 d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="fluidForce" style="width: 64px;">Strength</label>
+                                            <input type="range" id="fluidForce" name="fluid_force" class="form-range" min="1000" max="12000" step="250" value="{{ site_settings.fluid.fluid_force }}">
+                                            <span class="small text-muted fluid-val" data-for="fluidForce" style="min-width: 44px;">{{ site_settings.fluid.fluid_force }}</span>
+                                        </div>
+                                        <div class="col-sm-6 d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="fluidFade" style="width: 64px;">Fade</label>
+                                            <input type="range" id="fluidFade" name="fluid_fade" class="form-range" min="5" max="80" step="1" value="{{ site_settings.fluid.fluid_fade }}">
+                                            <span class="small text-muted fluid-val" data-for="fluidFade" style="min-width: 34px;">{{ site_settings.fluid.fluid_fade }}</span>
+                                        </div>
+                                        <div class="col-sm-6 d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="fluidSwirl" style="width: 64px;">Swirl</label>
+                                            <input type="range" id="fluidSwirl" name="fluid_swirl" class="form-range" min="0" max="20" step="1" value="{{ site_settings.fluid.fluid_swirl }}">
+                                            <span class="small text-muted fluid-val" data-for="fluidSwirl" style="min-width: 34px;">{{ site_settings.fluid.fluid_swirl }}</span>
+                                        </div>
+                                        <div class="col-sm-6 d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="fluidQuality" style="width: 64px;">Quality</label>
+                                            <select id="fluidQuality" name="fluid_quality" class="form-select form-select-sm" style="width: auto;">
+                                                <option value="512" {% if site_settings.fluid.fluid_quality == 512 %}selected{% endif %}>Low (fastest)</option>
+                                                <option value="1024" {% if site_settings.fluid.fluid_quality == 1024 %}selected{% endif %}>Medium</option>
+                                                <option value="1440" {% if site_settings.fluid.fluid_quality == 1440 %}selected{% endif %}>High</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-sm-6 d-flex align-items-center gap-2 justify-content-end">
+                                            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Save</button>
+                                        </div>
+                                    </form>
+                                    <small class="text-muted">
+                                        Size is the splash width, Strength how hard the cursor pushes the fluid, Fade how quickly
+                                        the trail disappears, Swirl the amount of curl. Drop Quality if the effect feels heavy.
+                                        Changes apply on the next page load.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Glass opacity -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-layer-group me-2 text-info"></i>Glass Effect</h6>
+                                    <small class="text-muted">How solid the frosted panels are across the whole site</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex flex-wrap align-items-center gap-3">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="glass_opacity">
+                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                            <label class="form-label mb-0 small text-nowrap" for="glassOpacity">Opacity</label>
+                                            <input type="range" id="glassOpacity" name="setting_value" class="form-range"
+                                                   min="20" max="100" step="1" value="{{ site_settings.glass_opacity }}"
+                                                   style="max-width: 260px;">
+                                            <span id="glassOpacityValue" class="small text-muted" style="min-width: 42px;">{{ site_settings.glass_opacity }}%</span>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="glassOpacityReset" style="white-space: nowrap;">
+                                            <i class="fas fa-rotate-left me-1"></i>Reset preview
+                                        </button>
+                                    </form>
+                                    <small class="text-muted">
+                                        Drag to preview live on this page &mdash; the cards around you update as you move the
+                                        slider. Save to apply it everywhere: 20% is barely-there glass, 100% is solid.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cursor Glow -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-magic me-2 text-warning"></i>Cursor Effect</h6>
+                                    <small class="text-muted">Pick the pointer effect, and tune the glow's colour, shape, size and strength</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_cursor_glow') }}" class="d-flex flex-wrap align-items-center gap-3">
+                                        {{ csrf_field() }}
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="cursorEffect">Effect</label>
+                                            <select id="cursorEffect" name="cursor_effect" class="form-select form-select-sm" style="width: auto;">
+                                                <option value="both" {% if site_settings.cursor_effect == 'both' %}selected{% endif %}>Glow + Fluid</option>
+                                                <option value="glow" {% if site_settings.cursor_effect == 'glow' %}selected{% endif %}>Glow only</option>
+                                                <option value="fluid" {% if site_settings.cursor_effect == 'fluid' %}selected{% endif %}>Fluid only</option>
+                                                <option value="none" {% if site_settings.cursor_effect == 'none' %}selected{% endif %}>Off</option>
+                                            </select>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small" for="cursorGlowColor">Colour</label>
+                                            <input type="color" id="cursorGlowColor" name="cursor_glow_color" class="form-control form-control-color" value="{{ site_settings.cursor_glow_color }}" title="Pick a glow colour">
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small" for="cursorGlowShape">Shape</label>
+                                            <select id="cursorGlowShape" name="cursor_glow_shape" class="form-select form-select-sm" style="width: auto;">
+                                                {% for shape in ['circle', 'square', 'diamond', 'star'] %}
+                                                <option value="{{ shape }}" {% if site_settings.cursor_glow_shape == shape %}selected{% endif %}>{{ shape|title }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="cursorGlowSize">Size</label>
+                                            <input type="range" id="cursorGlowSize" name="cursor_glow_size" class="form-range" min="40" max="200" step="4" value="{{ site_settings.cursor_glow_size }}" style="width: 110px;">
+                                            <span id="cursorGlowSizeValue" class="small text-muted" style="min-width: 42px;">{{ site_settings.cursor_glow_size }}px</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label class="form-label mb-0 small text-nowrap" for="cursorGlowOpacity">Opacity</label>
+                                            <input type="range" id="cursorGlowOpacity" name="cursor_glow_opacity" class="form-range" min="20" max="100" step="5" value="{{ site_settings.cursor_glow_opacity }}" style="width: 110px;">
+                                            <span id="cursorGlowOpacityValue" class="small text-muted" style="min-width: 38px;">{{ site_settings.cursor_glow_opacity }}%</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="small text-muted">Preview</span>
+                                            <span class="d-inline-flex align-items-center justify-content-center" style="width: 72px; height: 72px;">
+                                                <span id="cursorGlowPreview" class="d-inline-block"></span>
+                                            </span>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                    <small class="text-muted">Applies everywhere. Whatever the glow passes over &mdash; text, icons, cards &mdash; is brightened underneath it. Mouse-only: touch devices never show it.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Author -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-user me-2 text-success"></i>Footer Author Name</h6>
+                                    <small class="text-muted">Developer or organization name displayed in footer</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="footer_author">
+                                        <input type="text" name="setting_value" class="form-control" value="{{ site_settings.footer_author }}" placeholder="Enter author name" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer Text -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-font me-2 text-info"></i>Footer Text</h6>
+                                    <small class="text-muted">Text before author name (e.g., "Developed By", "Created By")</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="footer_text">
+                                        <input type="text" name="setting_value" class="form-control" value="{{ site_settings.footer_text }}" placeholder="Enter footer text" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer Link -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-link me-2 text-warning"></i>Footer Link URL</h6>
+                                    <small class="text-muted">URL when clicking the author name in footer</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="footer_link">
+                                        <input type="url" name="setting_value" class="form-control" value="{{ site_settings.footer_link }}" placeholder="https://example.com" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer Email -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-envelope me-2 text-primary"></i>Contact Email</h6>
+                                    <small class="text-muted">Email shown for support/contact requests</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="footer_email">
+                                        <input type="email" name="setting_value" class="form-control" value="{{ site_settings.footer_email }}" placeholder="you@example.com" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="alert alert-success">
+                        <h6 class="mb-2"><i class="fas fa-eye me-1"></i>Live Preview</h6>
+                        <div class="p-2 rounded" style="background: var(--bg-elevated);">
+                            <span style="color: var(--text-muted);">
+                                <strong>{{ site_settings.app_name }}</strong> &copy; {{ site_settings.current_year }} |
+                                <a href="{{ site_settings.footer_link }}" target="_blank" style="color: var(--primary-accent);">
+                                    {{ site_settings.footer_text }} {{ site_settings.footer_author }}
+                                </a>
+                                | <a href="mailto:{{ site_settings.footer_email }}" style="color: var(--primary-accent);">{{ site_settings.footer_email }}</a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Landing Page -->
+        <div class="tab-pane fade" id="landing-page" role="tabpanel" aria-labelledby="landing-page-tab">
+            <style>
+                .lp-photo-slot { display: flex; align-items: center; gap: 1rem; }
+                .lp-photo-preview {
+                    position: relative;
+                    width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
+                    display: grid; place-items: center; overflow: hidden;
+                    color: #fff; font-weight: 700; font-size: 1.9rem;
+                    background: linear-gradient(135deg, #3B82F6, #A855F7);
+                    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.35);
+                }
+                .lp-photo-preview.is-warm { background: linear-gradient(135deg, #F97316, #EC4899); }
+                .lp-photo-preview.is-gold { background: linear-gradient(135deg, #F59E0B, #DB2777); }
+                .lp-photo-preview.is-off { filter: grayscale(1); opacity: 0.5; box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.35); }
+                /* Indented and hairlined off, so a switch reads as a note on the field
+                   above it rather than as another field in its own right. */
+                .lp-switch-row { padding-left: 1.5rem; margin-top: -0.35rem; }
+                .lp-switch-row .form-text { margin-top: 0.1rem; }
+                /* Same crop the live page uses, so this preview is truthful. */
+                .lp-photo-preview img {
+                    position: absolute; top: 0; left: 0;
+                    width: 100%; height: 100%;
+                    object-fit: cover; object-position: center; display: block;
+                }
+            </style>
+
+            {# One editor per landing-page section. Each accordion body posts only
+               its own fields, so saving one section leaves the others alone. #}
+            <div class="card mb-4">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); color: white;">
+                    <h5 class="mb-0"><i class="fas fa-file-lines me-2"></i>Landing Page</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        This is the page signed-out visitors see &mdash; the one shown after logout. Every heading,
+                        paragraph, name and photo below goes live as soon as you save.
+                    </p>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        {% if landing_is_custom %}
+                        <span class="badge bg-success"><i class="fas fa-pen me-1"></i>Edited</span>
+                        {% else %}
+                        <span class="badge bg-secondary"><i class="fas fa-file me-1"></i>Default text</span>
+                        {% endif %}
+                        <a href="{{ url_for('landing_message_preview') }}" target="_blank" rel="noopener" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-eye me-1"></i>Preview page
+                        </a>
+                        <form method="POST" action="{{ url_for('reset_landing_content') }}" class="d-inline"
+                              onsubmit="return confirm('Restore the original text on every section? Uploaded photos are kept.');">
+                            {{ csrf_field() }}
+                            <button type="submit" class="btn btn-outline-danger btn-sm" {% if not landing_is_custom %}disabled{% endif %}>
+                                <i class="fas fa-rotate-left me-1"></i>Restore default text
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {# ---------------------------------------------------- photos #}
+            {% macro photo_slot(slot, key, name_key, tone) %}
+            {% set shown = landing_content['lp_person' ~ slot ~ '_photo_show'] != '0' %}
+            <div class="col-md-6">
+                <div class="lp-photo-slot">
+                    {# The preview greys out when the photo is switched off, so this card
+                       shows at a glance what the page is actually drawing. #}
+                    <div class="lp-photo-preview {{ tone }}{% if not shown %} is-off{% endif %}">
+                        {% if landing_content[key] and shown %}
+                        <img src="{{ url_for('static', filename=landing_content[key]) }}" alt="{{ landing_content[name_key] }}">
+                        {% else %}
+                        <span>{{ landing_content['lp_person' ~ slot ~ '_initials'] }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold mb-1">{{ landing_content[name_key] or 'Photo ' ~ slot }}</div>
+                        <form method="POST" action="{{ url_for('upload_landing_photo') }}" enctype="multipart/form-data">
+                            {{ csrf_field() }}
+                            <input type="hidden" name="slot" value="{{ slot }}">
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="file" class="form-control" name="photo" accept="image/*" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-1"></i>Upload
+                                </button>
+                            </div>
+                        </form>
+                        {% if landing_content[key] %}
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            {# Hiding keeps the file; removing deletes it. Two separate
+                               things, so they are two separate controls. #}
+                            <form method="POST" action="{{ url_for('toggle_landing_photo') }}">
+                                {{ csrf_field() }}
+                                <input type="hidden" name="slot" value="{{ slot }}">
+                                <input type="hidden" name="show" value="{{ '0' if shown else '1' }}">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas {{ 'fa-eye-slash' if shown else 'fa-eye' }} me-1"></i>{{ 'Hide on page' if shown else 'Show on page' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('remove_landing_photo') }}"
+                                  onsubmit="return confirm('Delete this photo file and show initials instead?');">
+                                {{ csrf_field() }}
+                                <input type="hidden" name="slot" value="{{ slot }}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-trash me-1"></i>Remove photo
+                                </button>
+                            </form>
+                        </div>
+                        {% if not shown %}
+                        <div class="form-text small text-warning mt-1">
+                            <i class="fas fa-eye-slash me-1"></i>Hidden &mdash; the page shows initials. The file is still here.
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted small"><i class="fas fa-circle-info me-1"></i>No photo &mdash; initials are shown.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endmacro %}
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-user-circle me-2"></i>Photos</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Any size or shape works &mdash; the photo is cropped to a circle from its centre and scaled
+                        automatically, so there is no need to resize it first. PNG, JPG, GIF or WEBP, up to 5MB.
+                        The first photo is also the portrait in <strong>About the Creator</strong>, the
+                        second is used on the Support card further down the page, and the third is the
+                        <strong>Motivation</strong> card in the sidebar.
+                        <strong>Hide on page</strong> switches a photo off everywhere it appears &mdash; the
+                        initials are shown instead and the file is kept, so it can be switched back on.
+                    </p>
+                    <div class="row g-4">
+                        {{ photo_slot('1', 'lp_person1_photo', 'lp_person1_name', '') }}
+                        {{ photo_slot('2', 'lp_person2_photo', 'lp_person2_name', 'is-warm') }}
+                        {{ photo_slot('3', 'lp_person3_photo', 'lp_person3_name', 'is-gold') }}
+                    </div>
+                </div>
+            </div>
+
+            {# ------------------------------------------------------ text #}
+            <div class="accordion mb-3" id="landingAccordion">
+                {% for section in landing_sections %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="lpHead{{ loop.index }}">
+                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#lpBody{{ loop.index }}"
+                                aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="lpBody{{ loop.index }}">
+                            <i class="fas {{ section.icon }} me-2"></i>{{ section.title }}
+                        </button>
+                    </h2>
+                    <div id="lpBody{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                         aria-labelledby="lpHead{{ loop.index }}" data-bs-parent="#landingAccordion">
+                        <div class="accordion-body">
+                            <form method="POST" action="{{ url_for('update_landing_content') }}">
+                                {{ csrf_field() }}
+                                <div class="row g-3">
+                                    {% for field in section.fields %}
+                                    {# A switch takes a row to itself so it reads as belonging to the
+                                       field above it rather than to whatever shares its half-row. #}
+                                    <div class="{% if field.type == 'text' %}col-md-6{% else %}col-12{% endif %}{% if field.type == 'toggle' %} lp-switch-row{% endif %}">
+                                        {% if field.type != 'toggle' %}
+                                        <label class="form-label small fw-semibold" for="lp-{{ field.key }}">{{ field.label }}</label>
+                                        {% endif %}
+                                        {% if field.type == 'toggle' %}
+                                        {# An unticked box posts nothing, so the form names every switch it
+                                           carries - that is how the save can tell "off" from "not on this form". #}
+                                        <input type="hidden" name="_toggles" value="{{ field.key }}">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                   id="lp-{{ field.key }}" name="{{ field.key }}" value="1"
+                                                   {% if landing_content[field.key] != '0' %}checked{% endif %}>
+                                            <label class="form-check-label small fw-semibold" for="lp-{{ field.key }}">{{ field.label }}</label>
+                                        </div>
+                                        {% elif field.type == 'text' %}
+                                        <input type="text" class="form-control form-control-sm" id="lp-{{ field.key }}"
+                                               name="{{ field.key }}" value="{{ landing_content[field.key] }}">
+                                        {% else %}
+                                        <textarea class="form-control form-control-sm" id="lp-{{ field.key }}"
+                                                  name="{{ field.key }}" rows="{{ 3 if field.type == 'lines' else 4 }}"
+                                                  style="line-height: 1.55;">{{ landing_content[field.key] }}</textarea>
+                                        {% endif %}
+                                        {% if field.help %}<div class="form-text small">{{ field.help }}</div>{% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm mt-3">
+                                    <i class="fas fa-save me-1"></i>Save this section
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="form-text">
+                Formatting you can use in any field: <code>**bold**</code>, <code>*italic*</code>,
+                <code>`code`</code>, <code>[link text](https://example.com)</code>. A blank line starts a new
+                paragraph; a single line break stays a line break. Anything else is shown as plain text.
+            </div>
+        </div>
+
+        <!-- Tab 2: App Names -->
+        <div class="tab-pane fade" id="app-names" role="tabpanel" aria-labelledby="app-names-tab">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Application/Tool Names</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Customize the display names for each tool. These names appear on tiles, page titles, and in generated filenames.
+                    </p>
+                    
+                    <!-- App 1 -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-calendar-check me-2" style="color: #6366f1;"></i>Tool 1: Attendance Generator</h6>
+                                    <small class="text-muted">Main attendance generation tool from Zoom logs</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="app1_name">
+                                        {% set app1_val = '' %}
+                                        {% for s in app_settings %}{% if s.setting_key == 'app1_name' %}{% set app1_val = s.setting_value %}{% endif %}{% endfor %}
+                                        <input type="text" name="setting_value" class="form-control" value="{{ app1_val or 'Zoom Attendance Analyzer' }}" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- App 2 -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-exchange-alt me-2" style="color: #06b6d4;"></i>Tool 2: Smart Matcher</h6>
+                                    <small class="text-muted">Record matching tool with fuzzy algorithms</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="app2_name">
+                                        {% set app2_val = '' %}
+                                        {% for s in app_settings %}{% if s.setting_key == 'app2_name' %}{% set app2_val = s.setting_value %}{% endif %}{% endfor %}
+                                        <input type="text" name="setting_value" class="form-control" value="{{ app2_val or 'Intelligent Record Matcher' }}" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- App 3 -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6 class="mb-1"><i class="fas fa-file-export me-2" style="color: #f59e0b;"></i>Tool 3: Report Generator</h6>
+                                    <small class="text-muted">Individual session file generator</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <form method="POST" action="{{ url_for('update_settings') }}" class="d-flex gap-2">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="setting_key" value="app3_name">
+                                        {% set app3_val = '' %}
+                                        {% for s in app_settings %}{% if s.setting_key == 'app3_name' %}{% set app3_val = s.setting_value %}{% endif %}{% endfor %}
+                                        <input type="text" name="setting_value" class="form-control" value="{{ app3_val or 'Session Report Generator' }}" required>
+                                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        <strong>Tip:</strong> App names appear on homepage tiles, page headers, and in generated file names (e.g., "YourAppName_2024-01-14_143022.xlsx")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Output Formats -->
+        <div class="tab-pane fade" id="output-formats" role="tabpanel" aria-labelledby="output-formats-tab">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-file-export me-2"></i>Output Format Settings</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Rename or hide columns in each tool's generated file. The preview below updates as you type,
+                        showing exactly the header row the generated file will have.
+                    </p>
+
+                    {% if output_column_configs %}
+                    <div class="accordion" id="outputFormatAccordion">
+                        {% for app_key, config in output_column_configs.items() %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#formatCollapse{{ loop.index }}">
+                                    <strong>{{ app_names.get(app_key, app_key | upper) }}</strong>
+                                    <span class="ms-3 badge bg-secondary">{{ config.columns | length }} column(s)</span>
+                                </button>
+                            </h2>
+                            <div id="formatCollapse{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" data-bs-parent="#outputFormatAccordion">
+                                <div class="accordion-body">
+                                    <form method="POST" action="{{ url_for('update_app_format') }}" class="output-format-form" data-app="{{ app_key }}">
+                                        {{ csrf_field() }}
+                                        <input type="hidden" name="app_name" value="{{ app_key }}">
+
+                                        <div class="table-responsive mb-3">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 30%;">Column</th>
+                                                        <th style="width: 45%;">Rename to</th>
+                                                        <th style="width: 25%;">Hide from output</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for col in config.columns %}
+                                                    <tr>
+                                                        <td><code>{{ col }}</code></td>
+                                                        <td>
+                                                            <input type="text" class="form-control form-control-sm output-rename-input"
+                                                                   name="rename__{{ col }}" data-original="{{ col }}"
+                                                                   value="{{ config.renames.get(col, '') }}" placeholder="{{ col }}">
+                                                        </td>
+                                                        <td>
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input output-hidden-checkbox" role="switch"
+                                                                       name="hidden__{{ col }}" value="1" data-original="{{ col }}"
+                                                                       {% if col in config.hidden %}checked{% endif %}>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="mb-3 p-2 rounded" style="background: var(--bg-elevated, #f8f9fa); border: 1px solid var(--border-color, #dee2e6);">
+                                            <div class="small text-muted mb-1"><i class="fas fa-eye me-1"></i>Preview of generated header row:</div>
+                                            <div class="output-format-preview font-monospace small fw-semibold"></div>
+                                        </div>
+
+                                        <p class="small text-muted">
+                                            Session columns (dated automatically each run) aren't listed here since their exact
+                                            label changes every time and can't be usefully pinned to one name.
+                                        </p>
+
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-save me-1"></i>Save {{ app_names.get(app_key, app_key | upper) }} Settings
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        No output format settings found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Processing Animation -->
+        <div class="tab-pane fade" id="processing-overlay" role="tabpanel" aria-labelledby="processing-overlay-tab">
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); color: white;">
+                    <h5 class="mb-0"><i class="fas fa-spinner me-2"></i>Processing Animation</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">
+                        The staged overlay users see while a file is being processed. One stage per line,
+                        in order. Stage timings are estimates &mdash; the overlay never claims the job
+                        finished, it keeps running until the server replies.
+                    </p>
+
+                    <form method="POST" action="{{ url_for('update_processing_overlay') }}">
+                        {{ csrf_field() }}
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="overlay_enabled" name="overlay_enabled"
+                                           {% if processing_overlay.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="overlay_enabled">
+                                        <strong>Show the animation</strong>
+                                        <span class="d-block text-muted small">Turn off to submit forms with no overlay at all.</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="overlay_show_elapsed" name="overlay_show_elapsed"
+                                           {% if processing_overlay.show_elapsed %}checked{% endif %}>
+                                    <label class="form-check-label" for="overlay_show_elapsed">
+                                        <strong>Show the elapsed timer</strong>
+                                        <span class="d-block text-muted small">The running clock at the bottom of the panel.</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="overlay_subtitle" class="form-label small fw-semibold">Line under the title</label>
+                                <input type="text" class="form-control form-control-sm" id="overlay_subtitle"
+                                       name="overlay_subtitle" maxlength="300"
+                                       value="{{ processing_overlay.subtitle }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="overlay_slow_notice" class="form-label small fw-semibold">Message when it runs long</label>
+                                <input type="text" class="form-control form-control-sm" id="overlay_slow_notice"
+                                       name="overlay_slow_notice" maxlength="300"
+                                       value="{{ processing_overlay.slow_notice }}">
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            {% for key, label in overlay_tools %}
+                            {% set tool = processing_overlay.tools[key] %}
+                            <div class="col-lg-6">
+                                <div class="card h-100">
+                                    <div class="card-header py-2">
+                                        <h6 class="mb-0 small fw-bold">{{ label }}</h6>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <label for="title__{{ key }}" class="form-label small">Panel title</label>
+                                        <input type="text" class="form-control form-control-sm mb-2"
+                                               id="title__{{ key }}" name="title__{{ key }}"
+                                               maxlength="120" value="{{ tool.title }}">
+
+                                        <label for="steps__{{ key }}" class="form-label small">
+                                            Stages <span class="text-muted">(one per line, max {{ overlay_max_steps }})</span>
+                                        </label>
+                                        <textarea class="form-control form-control-sm" id="steps__{{ key }}"
+                                                  name="steps__{{ key }}" rows="6"
+                                                  style="font-size: 0.8rem;">{{ tool.steps | join('\n') }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Animation Settings
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+                    <form method="POST" action="{{ url_for('reset_processing_overlay') }}"
+                          onsubmit="return confirm('Reset every stage back to the built-in wording?');">
+                        {{ csrf_field() }}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-undo me-1"></i>Reset to default stages
+                        </button>
+                        <span class="text-muted small ms-2">Clears your wording and restores the originals.</span>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Maintenance Mode -->
+        <div class="tab-pane fade" id="maintenance" role="tabpanel" aria-labelledby="maintenance-tab">
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); color: white;">
+                    <h5 class="mb-0"><i class="fas fa-triangle-exclamation me-2"></i>Maintenance Mode</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        When this is on, everyone <strong>except you (superadmin)</strong> sees the
+                        maintenance page below instead of the portal &mdash; logged out or logged in, any
+                        role. You keep full access, so you can switch it back off at any time. The normal
+                        login and landing pages are untouched.
+                    </p>
+
+                    <div class="alert {% if maintenance.enabled %}alert-warning{% else %}alert-secondary{% endif %} py-2 px-3 small d-flex align-items-center gap-2">
+                        <i class="fas {% if maintenance.enabled %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                        <span>
+                            Status:
+                            <strong>{% if maintenance.enabled %}ON &mdash; the site is showing the maintenance page{% else %}OFF &mdash; the site is live{% endif %}</strong>
+                        </span>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('update_maintenance') }}">
+                        {{ csrf_field() }}
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="maintenance_enabled" name="maintenance_enabled"
+                                   {% if maintenance.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="maintenance_enabled">
+                                <strong>Turn maintenance mode on</strong>
+                                <span class="d-block text-muted small">Shows the maintenance page to everyone except superadmin.</span>
+                            </label>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="maintenance_heading" class="form-label small fw-semibold">Heading</label>
+                            <input type="text" class="form-control" id="maintenance_heading"
+                                   name="maintenance_heading" maxlength="200"
+                                   value="{{ maintenance.heading }}"
+                                   placeholder="This site is currently down for maintenance">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="maintenance_message" class="form-label small fw-semibold">Message</label>
+                            <textarea class="form-control" id="maintenance_message"
+                                      name="maintenance_message" rows="4" maxlength="2000"
+                                      placeholder="We are performing scheduled maintenance...">{{ maintenance.message }}</textarea>
+                            <span class="text-muted small">Line breaks are kept on the page.</span>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-4 align-items-center">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Maintenance Settings
+                            </button>
+                            <a href="{{ url_for('maintenance') }}" target="_blank" rel="noopener"
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-eye me-1"></i>Preview page
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: System Settings -->
+        <div class="tab-pane fade" id="system-settings" role="tabpanel" aria-labelledby="system-settings-tab">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>System Settings (Advanced)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="card mb-4">
+                        <div class="card-header bg-danger text-white">
+                            <h6 class="mb-0"><i class="fas fa-key me-2"></i>Change Superadmin Password</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('change_password') }}">
+                                {{ csrf_field() }}
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Current Password</label>
+                                        <input type="password" name="current_password" class="form-control" required autocomplete="current-password">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small">New Password</label>
+                                        <input type="password" name="new_password" class="form-control" required minlength="8" autocomplete="new-password">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small">Confirm New Password</label>
+                                        <input type="password" name="confirm_password" class="form-control" required minlength="8" autocomplete="new-password">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-danger w-100"><i class="fas fa-save me-1"></i>Update</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Reset the dashboard counters -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="fas fa-rotate-left me-2"></i>Reset Dashboard Statistics</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                The dashboard counts these records. Clearing them sets the matching tiles back to zero &mdash;
+                                it does not touch users, batches or generated files. This cannot be undone.
+                            </p>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="p-3 rounded h-100" style="background: var(--bg-elevated); border: 1px solid var(--border-color);">
+                                        <div class="fw-semibold mb-1">Processing history</div>
+                                        <div class="small text-muted mb-2">
+                                            Drives <strong>Files Processed</strong>, <strong>Hours Saved</strong> and the
+                                            <strong>Processing Breakdown</strong>.
+                                            <br>{{ usage_counts.processing_records if usage_counts else 0 }} record(s) stored.
+                                        </div>
+                                        <form method="POST" action="{{ url_for('reset_dashboard_stats') }}"
+                                              onsubmit="return confirm('Delete all processing history? Files Processed, Hours Saved and the breakdown will reset to zero.');">
+                                            {{ csrf_field() }}
+                                            <input type="hidden" name="scope" value="processing">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash me-1"></i>Reset processing stats
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 rounded h-100" style="background: var(--bg-elevated); border: 1px solid var(--border-color);">
+                                        <div class="fw-semibold mb-1">Login history</div>
+                                        <div class="small text-muted mb-2">
+                                            Drives <strong>Total Logins</strong> and the recent-login list.
+                                            <br>{{ usage_counts.login_records if usage_counts else 0 }} record(s) stored.
+                                        </div>
+                                        <form method="POST" action="{{ url_for('reset_dashboard_stats') }}"
+                                              onsubmit="return confirm('Delete all login history? Total Logins and the recent-login list will reset.');">
+                                            {{ csrf_field() }}
+                                            <input type="hidden" name="scope" value="logins">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash me-1"></i>Clear login history
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ url_for('reset_dashboard_stats') }}" class="mt-3"
+                                  onsubmit="return confirm('Delete BOTH processing history and login history? Every dashboard counter resets to zero.');">
+                                {{ csrf_field() }}
+                                <input type="hidden" name="scope" value="all">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-broom me-1"></i>Reset everything
+                                </button>
+                            </form>
+                            <p class="small text-muted mt-3 mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>Total Users</strong> is not a stored counter &mdash; it is the number of active
+                                (non-hidden) accounts, so it changes when you add or delete a user.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        <strong>Advanced Feature:</strong> These are system-level settings. Only modify if you know what you're doing.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Setting Key</th>
+                                    <th>Value</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if app_settings %}
+                                    {% for setting in app_settings %}
+                                        {# lp_* rows have their own editor on the Landing Page tab -- they would
+                                           be a wall of text in this table. #}
+                                        {% if not setting.setting_key.startswith('app') and not setting.setting_key.startswith('footer') and not setting.setting_key.startswith('lp_') and setting.setting_key != 'landing_message' %}
+                                        <tr>
+                                            <td><code>{{ setting.setting_key }}</code></td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('update_settings') }}" class="d-inline">
+                                                    {{ csrf_field() }}
+                                                    <input type="hidden" name="setting_key" value="{{ setting.setting_key }}">
+                                                    <div class="input-group input-group-sm" style="max-width: 250px;">
+                                                        {% if setting.setting_type == 'boolean' %}
+                                                        <select name="setting_value" class="form-select form-select-sm">
+                                                            <option value="1" {% if setting.setting_value == '1' %}selected{% endif %}>Enabled</option>
+                                                            <option value="0" {% if setting.setting_value == '0' %}selected{% endif %}>Disabled</option>
+                                                        </select>
+                                                        {% else %}
+                                                        <input type="text" name="setting_value" class="form-control form-control-sm" value="{{ setting.setting_value }}">
+                                                        {% endif %}
+                                                        <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-save"></i></button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                            <td><span class="badge bg-info">{{ setting.setting_type or 'string' }}</span></td>
+                                            <td><small>{{ setting.description or '-' }}</small></td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('delete_setting', setting_key=setting.setting_key) }}" class="d-inline" onsubmit="return confirm('Delete this setting?');">
+                                                    {{ csrf_field() }}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Add New Setting -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-plus me-1"></i>Add New System Setting</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('create_setting') }}">
+                                {{ csrf_field() }}
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <input type="text" name="setting_key" class="form-control" placeholder="Setting Key" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" name="setting_value" class="form-control" placeholder="Value" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select name="setting_type" class="form-select">
+                                            <option value="string">String</option>
+                                            <option value="integer">Integer</option>
+                                            <option value="boolean">Boolean</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" name="description" class="form-control" placeholder="Description">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+/* Tab styling */
+.nav-tabs .nav-link {
+    color: var(--text-secondary);
+    font-weight: 500;
+    border: none;
+    padding: 0.75rem 1.25rem;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-accent);
+    font-weight: 600;
+    border-bottom: 3px solid var(--primary-accent);
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+    color: var(--text-primary);
+    border-color: transparent;
+}
+
+/* Card styling -- border matches the shared glass hairline */
+.card {
+    border: 1px solid var(--glass-hairline);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Accordion styling */
+.accordion-button:not(.collapsed) {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: var(--primary-accent);
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: var(--border-color);
+}
+
+/* Form styling */
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+}
+
+/* Monospace for code */
+.font-monospace {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Saving a landing-page section redirects back with #landing-page, so reopen
+    // that tab instead of dropping the admin on Site Settings every time.
+    if (window.location.hash) {
+        var wanted = document.querySelector('[data-bs-target="' + window.location.hash + '"]');
+        if (wanted && wanted.classList.contains('nav-link') && window.bootstrap) {
+            new bootstrap.Tab(wanted).show();
+        }
+    }
+
+    // Output Format Settings: live preview of the resulting header row as the admin
+    // types a rename or toggles a column hidden -- no server round trip needed since
+    // everything it needs (the column list, current renames/hidden state) is already
+    // in the DOM.
+    document.querySelectorAll('.output-format-form').forEach(function (form) {
+        var previewEl = form.querySelector('.output-format-preview');
+        var renameInputs = Array.from(form.querySelectorAll('.output-rename-input'));
+
+        function updatePreview() {
+            var headers = renameInputs
+                .filter(function (input) {
+                    var hiddenBox = form.querySelector('.output-hidden-checkbox[data-original="' + CSS.escape(input.dataset.original) + '"]');
+                    return !(hiddenBox && hiddenBox.checked);
+                })
+                .map(function (input) {
+                    return input.value.trim() || input.dataset.original;
+                });
+            previewEl.textContent = headers.length ? headers.join('  |  ') : '(all columns hidden)';
+        }
+
+        form.querySelectorAll('.output-rename-input, .output-hidden-checkbox').forEach(function (el) {
+            el.addEventListener('input', updatePreview);
+            el.addEventListener('change', updatePreview);
+        });
+        updatePreview();
+    });
+
+    // Fluid cursor sliders: echo their value while dragging.
+    document.querySelectorAll('.fluid-val').forEach(function (out) {
+        var input = document.getElementById(out.dataset.for);
+        if (!input) return;
+        input.addEventListener('input', function () { out.textContent = input.value; });
+    });
+
+    // Glass opacity: repaint the page as the slider moves, so the panels around
+    // you are the preview. --glass-alpha on <html> feeds every glass surface.
+    var glassSlider = document.getElementById('glassOpacity');
+    var glassValue = document.getElementById('glassOpacityValue');
+    var glassReset = document.getElementById('glassOpacityReset');
+
+    if (glassSlider) {
+        var savedGlass = glassSlider.value;
+
+        function applyGlass(percent) {
+            // set on <html>: --glass-surface is composed in :root, so the alpha
+            // must be overridden on that same element to re-resolve.
+            document.documentElement.style.setProperty('--glass-alpha', percent / 100);
+            if (glassValue) glassValue.textContent = percent + '%';
+        }
+
+        glassSlider.addEventListener('input', function () {
+            applyGlass(parseInt(glassSlider.value, 10));
+        });
+
+        if (glassReset) {
+            glassReset.addEventListener('click', function () {
+                glassSlider.value = savedGlass;
+                applyGlass(parseInt(savedGlass, 10));
+            });
+        }
+    }
+
+    // Cursor glow: show the chosen colour/shape/size/opacity before saving.
+    var glowColor = document.getElementById('cursorGlowColor');
+    var glowShape = document.getElementById('cursorGlowShape');
+    var glowPreview = document.getElementById('cursorGlowPreview');
+    var glowSize = document.getElementById('cursorGlowSize');
+    var glowOpacity = document.getElementById('cursorGlowOpacity');
+    var glowSizeValue = document.getElementById('cursorGlowSizeValue');
+    var glowOpacityValue = document.getElementById('cursorGlowOpacityValue');
+
+    if (glowColor && glowShape && glowPreview) {
+        var shapeStyles = {
+            circle: { borderRadius: '50%', transform: 'none', clipPath: 'none' },
+            square: { borderRadius: '6px', transform: 'none', clipPath: 'none' },
+            diamond: { borderRadius: '6px', transform: 'rotate(45deg)', clipPath: 'none' },
+            star: { borderRadius: '0', transform: 'none', clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }
+        };
+
+        function updateGlowPreview() {
+            var color = glowColor.value;
+            var shapeKey = glowShape.value;
+            var shape = shapeStyles[shapeKey] || shapeStyles.circle;
+            // Same 0.78 shrink the real glow applies to solid shapes, scaled to
+            // fit the 72px preview box.
+            var size = parseInt(glowSize ? glowSize.value : 88, 10) || 88;
+            var previewSize = Math.round(size * (shapeKey === 'circle' ? 1 : 0.78) * 0.5);
+
+            glowPreview.style.display = 'inline-block';
+            glowPreview.style.width = previewSize + 'px';
+            glowPreview.style.height = previewSize + 'px';
+            glowPreview.style.background = 'radial-gradient(circle, ' + color + ' 0%, ' + color + 'cc 30%, ' + color + '33 100%)';
+            glowPreview.style.borderRadius = shape.borderRadius;
+            glowPreview.style.transform = shape.transform;
+            glowPreview.style.clipPath = shape.clipPath;
+            glowPreview.style.opacity = glowOpacity ? (parseInt(glowOpacity.value, 10) / 100) : 1;
+
+            if (glowSizeValue) glowSizeValue.textContent = size + 'px';
+            if (glowOpacityValue && glowOpacity) glowOpacityValue.textContent = glowOpacity.value + '%';
+        }
+
+        glowColor.addEventListener('input', updateGlowPreview);
+        glowShape.addEventListener('change', updateGlowPreview);
+        if (glowSize) glowSize.addEventListener('input', updateGlowPreview);
+        if (glowOpacity) glowOpacity.addEventListener('input', updateGlowPreview);
+        updateGlowPreview();
+    }
+});
+</script>
+{% endblock %}

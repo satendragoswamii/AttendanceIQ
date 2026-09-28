@@ -1,0 +1,105 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}File Permissions - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0"><i class="fas fa-users-cog me-2"></i>Manage File Permissions</h3>
+        <a href="{{ url_for('processed_files_management') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="mb-4">
+            <h5>File: <strong>{{ file.file_name }}</strong></h5>
+            <p class="text-muted mb-0">Owner: {{ file.user_email }}</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Grant Access</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('manage_file_permissions', file_id=file.id) }}">
+                            {{ csrf_field() }}
+                            <input type="hidden" name="action" value="grant">
+                            <div class="mb-3">
+                                <label for="user_email" class="form-label">User Email</label>
+                                <input type="email" class="form-control" id="user_email" name="user_email" required placeholder="user@example.com">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-1"></i>Grant Access
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Current Permissions</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if permissions %}
+                        <ul class="list-group">
+                            {% for perm in permissions %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ perm.user_email }}</strong><br>
+                                    <small class="text-muted">Granted by: {{ perm.granted_by }}</small><br>
+                                    <small class="text-muted">Date: {{ perm.granted_at }}</small>
+                                </div>
+                                <form method="POST" action="{{ url_for('manage_file_permissions', file_id=file.id) }}" style="display: inline;">
+                                    {{ csrf_field() }}
+                                    <input type="hidden" name="action" value="revoke">
+                                    <input type="hidden" name="user_email" value="{{ perm.user_email }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Revoke access for {{ perm.user_email }}?');">
+                                        <i class="fas fa-user-times"></i> Revoke
+                                    </button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted">No additional permissions granted. Only the owner and superadmin can access this file.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick User Selection</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="userSelect" class="form-label">Select User to Grant Access</label>
+                        <select class="form-select" id="userSelect" onchange="selectUser()">
+                            <option value="">-- Select a user --</option>
+                            {% for user in all_users %}
+                            <option value="{{ user.email }}">{{ user.email }}{% if user.first_name or user.last_name %} ({{ user.first_name or '' }} {{ user.last_name or '' }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="text-muted small">Select a user from the dropdown above to automatically fill the email field in the grant access form.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectUser() {
+    const select = document.getElementById('userSelect');
+    const emailInput = document.getElementById('user_email');
+    if (select.value) {
+        emailInput.value = select.value;
+    }
+}
+</script>
+{% endblock %}
+

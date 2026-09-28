@@ -1,0 +1,143 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}{{ app_names.app1 if app_names else 'Zoom Attendance Analyzer' }} - {{ site_settings.app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 tool-page-container" style="height: 100%; overflow-y: auto;">
+    <div class="row justify-content-center">
+        <div class="col-xxl-10 col-xl-11 col-lg-12">
+            <div class="card tool-card">
+                <div class="card-header d-flex justify-content-between align-items-center py-2 px-3">
+                    <h3 class="mb-0 fs-5"><i class="fas fa-calendar-check me-2"></i>{{ app_names.app1 if app_names else 'Zoom Attendance Analyzer' }}</h3>
+                    <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Home
+                    </a>
+                </div>
+                <div class="card-body p-3">
+                    {% set current_step = 1 %}
+                    {% include '_step_indicator.html' %}
+                    {% if not session.user_id %}
+                    <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3 rounded-pill">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2 fa-lg"></i>
+                            <span>Demo mode. File processing requires login.</span>
+                        </div>
+                        <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-light ms-2 py-1 px-3">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success d-flex align-items-center justify-content-between py-2 px-3 mb-3 rounded-pill">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-check me-2 fa-lg"></i>
+                            {% set first_name = session.first_name or session.user_id %}
+                            {% set remaining = get_remaining_time(session.user_id) %}
+                            {% set last_activity = session.last_activity %}
+                            <span>
+                                Logged in as <strong>{{ first_name }}</strong> ({{ session.role|title }})
+                            </span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-lg-6 mb-3 mb-lg-0">
+                            <h5 class="mb-2 fs-6">Upload Zoom Session Logs</h5>
+                            <form id="attendanceForm" method="POST" action="{{ url_for('upload_attendance_file') }}" enctype="multipart/form-data" data-progress="attendance-upload">
+                                {{ csrf_field() }}
+                                <div class="mb-2">
+                                    <label for="csv_files" class="form-label small">Select Zoom Log File(s)</label>
+                                    <input class="form-control form-control-sm" type="file" id="csv_files" name="csv_files" accept=".csv,.xlsx" multiple {% if not session.user_id %}disabled{% endif %}>
+                                    <div class="form-text small">You can upload one or more CSV/Excel files.</div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label small d-block mb-1">Configuration Mode</label>
+                                    <div class="btn-group w-100" role="group" aria-label="Configuration mode">
+                                        <input type="radio" class="btn-check" name="configuration_mode" id="configuration_auto" value="auto" checked>
+                                        <label class="btn btn-outline-primary btn-sm" for="configuration_auto">
+                                            <i class="fas fa-magic me-1"></i>Auto
+                                        </label>
+                                        <input type="radio" class="btn-check" name="configuration_mode" id="configuration_manual" value="manual">
+                                        <label class="btn btn-outline-primary btn-sm" for="configuration_manual">
+                                            <i class="fas fa-sliders-h me-1"></i>Manual
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-warning compact d-flex align-items-center py-1 px-2 mb-2 rounded-pill">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    <span class="small">Human verification required for this tool</span>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100 btn-sm py-2" id="submitBtn" {% if not session.user_id %}disabled{% endif %}>
+                                    <i class="fas fa-upload me-2"></i>Upload and Configure
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="card h-100">
+                                <div class="card-body p-2">
+                                    <h5 class="card-title fs-6"><i class="fas fa-info-circle me-2"></i>How to Use</h5>
+                                    <p class="small text-muted mb-2"><strong>How to Use:</strong> Upload your Zoom attendance file and configure session settings to generate attendance reports.</p>
+                                    
+                                    <h6 class="mb-1 small">File Format Requirements</h6>
+                                    <p class="small mb-1">Zoom Log Format must include:</p>
+                                    <ul class="small mb-0" style="font-size: 0.75rem; line-height: 1.3;">
+                                        <li><strong>Name</strong> (First Name)</li>
+                                        <li><strong>User Name</strong> (Display Name)</li>
+                                        <li><strong>User Email</strong></li>
+                                        <li><strong>Join Time</strong></li>
+                                        <li><strong>Leave Time</strong></li>
+                                        <li><strong>Duration</strong> (Minutes)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const attendanceForm = document.getElementById('attendanceForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Check if user is logged in
+    const isLoggedIn = '{{ session.user_id }}' !== '';
+    
+    // Form submission protection for non-logged-in users
+    if (attendanceForm && !isLoggedIn) {
+        attendanceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Redirect to login page
+            window.location.href = '{{ url_for("login") }}';
+            return false;
+        });
+    }
+    
+    // Also add click event to submit button for extra protection
+    if (submitBtn && !isLoggedIn) {
+        submitBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Redirect to login page
+            window.location.href = '{{ url_for("login") }}';
+            return false;
+        });
+    }
+
+    // Show a loading state on real submissions (logged-in users only; native
+    // required-file validation still runs first and can block submission)
+    if (attendanceForm && submitBtn && isLoggedIn) {
+        attendanceForm.addEventListener('submit', function() {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+            submitBtn.disabled = true;
+        });
+    }
+});
+</script>
+{% endblock %}

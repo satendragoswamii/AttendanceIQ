@@ -1,0 +1,609 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Processed Files - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid" style="max-height: calc(100vh - 120px); overflow: hidden; display: flex; flex-direction: column;">
+    <!-- Header Row -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="mb-0">
+                    <i class="fas fa-file-download me-2" style="color: var(--primary-accent);"></i>
+                    Processed Files
+                </h4>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    {% if attendance_reedit_available %}
+                    <a href="{{ url_for('configure_attendance_sessions') }}" class="btn btn-outline-warning btn-sm" title="Return to Attendance Generator configuration">
+                        <i class="fas fa-undo me-1"></i>Re-edit Attendance Configuration
+                    </a>
+                    {% endif %}
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted" style="font-size: 0.7rem;" title="Applies to all downloads below">
+                            <i class="fas fa-tag me-1"></i>Naming:
+                        </span>
+                        <select id="downloadNamingPref" class="form-select form-select-sm" style="font-size: 0.7rem; width: auto; padding: 0.2rem 1.5rem 0.2rem 0.5rem;" onchange="updateDownloadNaming()">
+                            <option value="with_app_name">With app name</option>
+                            <option value="without_app_name">Without app name</option>
+                        </select>
+                    </div>
+                    {# The single ZIP control lives with the bulk actions below, where
+                       the selection it acts on is visible. #}
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards Row -->
+    <div class="row mb-2 g-2">
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--success-color);" id="visibleFilesCount">{{ total_files }}</h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Total Files</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--primary-accent);">{{ available_files }}</h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Available</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--warning-color);">{{ expired_files }}</h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Expired/Missing</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--info-color);"><span id="selectedCount">0</span></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Selected</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Actions Row -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <!-- App Filter -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-semibold" style="font-size: 0.75rem;">
+                                <i class="fas fa-filter me-1"></i>App:
+                            </span>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-filter="all" onclick="filterByApp('all', this)" style="font-size: 0.65rem; padding: 0.2rem 0.5rem;">
+                                    <i class="fas fa-layer-group me-1"></i>All
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="attendance_generation" onclick="filterByApp('attendance_generation', this)" style="font-size: 0.65rem; padding: 0.2rem 0.5rem;">
+                                    <i class="fas fa-calendar-check me-1"></i>Attendance
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="attendance_matching" onclick="filterByApp('attendance_matching', this)" style="font-size: 0.65rem; padding: 0.2rem 0.5rem;">
+                                    <i class="fas fa-exchange-alt me-1"></i>Matcher
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="final_excel" onclick="filterByApp('final_excel', this)" style="font-size: 0.65rem; padding: 0.2rem 0.5rem;">
+                                    <i class="fas fa-file-export me-1"></i>Final Excel
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Bulk Actions -->
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            {% if is_superadmin_view %}
+                            {# Superadmins see only their own output until they ask
+                               for someone else's here. #}
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-user me-1"></i>Files of:</span>
+                                <select class="form-select form-select-sm" style="font-size: 0.7rem; width: auto; padding: 0.2rem 1.5rem 0.2rem 0.5rem;"
+                                        onchange="window.location.href = this.value;">
+                                    <option value="{{ url_for('processed_files_management') }}"
+                                            {% if not owner_filter %}selected{% endif %}>Only mine</option>
+                                    <option value="{{ url_for('processed_files_management', owner='all') }}"
+                                            {% if owner_filter == 'all' %}selected{% endif %}>All users</option>
+                                    {% for email in owner_options %}
+                                    <option value="{{ url_for('processed_files_management', owner=email) }}"
+                                            {% if owner_filter == email %}selected{% endif %}>{{ email }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Expand or collapse dates">
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="setAllDateGroups(true)" title="Expand all dates" style="font-size: 0.7rem;">
+                                    <i class="fas fa-angle-double-down"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="setAllDateGroups(false)" title="Collapse all dates" style="font-size: 0.7rem;">
+                                    <i class="fas fa-angle-double-up"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                                <label class="form-check-label" for="selectAll" style="font-size: 0.75rem;">Select All</label>
+                            </div>
+                            {% if session.role == 'superadmin' %}
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteSelected()" id="deleteSelectedBtn" disabled>
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </button>
+                            {% endif %}
+                            {# One ZIP button, not two. With nothing ticked it takes
+                               everything you can see; ticking rows narrows it. #}
+                            <button class="btn btn-success btn-sm" onclick="downloadSelected()" id="downloadSelectedBtn"
+                                    {% if available_files == 0 %}disabled{% endif %}
+                                    title="Download as one ZIP">
+                                <i class="fas fa-file-archive me-1"></i><span id="downloadZipLabel">Download All ZIP</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Files Table -->
+    <div class="card flex-grow-1" style="overflow: hidden;">
+        <div class="card-body p-0" style="overflow-y: auto; max-height: calc(100vh - 340px);">
+            <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 10;">
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th>File Name</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Created</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end" style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="filesTableBody">
+                    {% if date_groups %}
+                        {% for group in date_groups %}
+                        {# One header row per day. Collapsing a day hides its file
+                           rows, which the bulk-action selectors already treat as
+                           "not visible" - so Select All and the ZIP button only
+                           ever act on days you have open. #}
+                        {% set group_id = 'g' ~ loop.index0 %}
+                        {% set group_is_open = loop.first %}
+                        <tr class="date-group-header {% if not group_is_open %}is-collapsed{% endif %}"
+                            data-group="{{ group_id }}">
+                            <td colspan="7" style="background: var(--bg-elevated); cursor: pointer; padding: 6px 10px;"
+                                onclick="toggleDateGroup('{{ group_id }}')">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-chevron-down group-caret" style="font-size: 0.7rem; transition: transform 0.15s ease;"></i>
+                                    <i class="fas fa-calendar-day" style="color: var(--primary-accent); font-size: 0.75rem;"></i>
+                                    <strong style="font-size: 0.78rem;">{{ group.label }}</strong>
+                                    {% if group.sub_label and group.label in ['Today', 'Yesterday'] %}
+                                    <small class="text-muted" style="font-size: 0.68rem;">{{ group.sub_label }}</small>
+                                    {% endif %}
+                                    <span class="badge bg-secondary group-count" style="font-size: 0.62rem;">{{ group.count }} file{{ '' if group.count == 1 else 's' }}</span>
+                                    {% if group.available < group.count %}
+                                    <span class="badge bg-danger" style="font-size: 0.62rem;">{{ group.count - group.available }} missing</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% for file in group.files %}
+                        <tr data-file-id="{{ file.id }}" data-app="{{ file.processing_type }}"
+                            data-group="{{ group_id }}"
+                            {% if not group_is_open %}style="display: none;"{% endif %}>
+                            <td>
+                                <input type="checkbox" class="file-checkbox" onchange="updateSelectedCount()" style="cursor: pointer;" {% if not file.exists %}disabled{% endif %}>
+                            </td>
+                            <td>
+                                <i class="fas fa-file-excel me-1" style="color: var(--success-color);"></i>
+                                <span class="file-name-display" 
+                                      data-file-id="{{ file.id }}" 
+                                      data-full-name="{{ file.file_name }}"
+                                      title="{{ file.file_name }}" 
+                                      style="font-size: 0.75rem; cursor: pointer; border-bottom: 1px dashed var(--text-secondary);"
+                                      onclick="startRename(this)">
+                                    {{ file.file_name[:45] }}{% if file.file_name|length > 45 %}...{% endif %}
+                                </span>
+                                <input type="text" class="file-name-input form-control form-control-sm d-none" 
+                                       data-file-id="{{ file.id }}"
+                                       style="font-size: 0.75rem; width: 300px; display: inline-block;"
+                                       onblur="cancelRename(this)"
+                                       onkeydown="handleRenameKey(event, this)">
+                            </td>
+                            <td>
+                                <small class="text-muted" style="font-size: 0.7rem;">{{ file.user_email[:25] }}{% if file.user_email|length > 25 %}...{% endif %}</small>
+                            </td>
+                            <td>
+                                {% if file.processing_type == 'attendance_generation' %}
+                                    <span class="badge bg-primary" style="font-size: 0.65rem;">Attendance</span>
+                                {% elif file.processing_type == 'attendance_matching' %}
+                                    <span class="badge bg-success" style="font-size: 0.65rem;">Smart Matcher</span>
+                                {% elif file.processing_type == 'final_excel' %}
+                                    <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">Final Excel</span>
+                                {% else %}
+                                    <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ file.processing_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted" style="font-size: 0.7rem;">{{ file.created_at }}</small>
+                            </td>
+                            <td class="text-center">
+                                {% if file.exists %}
+                                    <span class="badge bg-success" style="font-size: 0.65rem;">Available</span>
+                                    {% if file.time_remaining %}
+                                    <br><small class="text-muted" style="font-size: 0.6rem;">{{ file.time_remaining }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-danger" style="font-size: 0.65rem;">Missing</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    {% if file.exists %}
+                                    <a href="{{ url_for('download_processed_file', file_id=file.id) }}"
+                                       class="btn btn-outline-success btn-sm py-0 px-1 row-download-link" title="Download single file">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if session.role == 'superadmin' %}
+                                    <a href="{{ url_for('manage_file_permissions', file_id=file.id) }}" 
+                                       class="btn btn-outline-info btn-sm py-0 px-1" title="Permissions">
+                                        <i class="fas fa-users-cog"></i>
+                                    </a>
+                                    {% if file.exists %}
+                                    <form method="POST" action="{{ url_for('delete_processed_file', file_id=file.id) }}" 
+                                          style="display: inline;" onsubmit="return confirm('Delete this file?');">
+                                        {{ csrf_field() }}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>
+                                {% if owner_filter and owner_filter != 'all' %}
+                                No processed files for {{ owner_filter }}
+                                {% else %}
+                                No processed files found
+                                {% endif %}
+                                <br>
+                                <a href="{{ url_for('attendance_generator') }}" class="btn btn-outline-primary btn-sm mt-2">
+                                    <i class="fas fa-calendar-check me-1"></i>Process a file to see results here
+                                </a>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+        {% if total_pages > 1 %}
+        <div class="card-footer py-2">
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('processed_files_management', page=page-1) }}">Previous</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                            <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                        {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('processed_files_management', page=p) }}">{{ p }}</a></li>
+                        {% elif p == 4 or p == total_pages - 3 %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('processed_files_management', page=page+1) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer Tips -->
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="alert alert-info py-1 px-2 mb-0" style="font-size: 0.7rem;">
+                <i class="fas fa-lightbulb me-1"></i>
+                <strong>Tip:</strong> Files from Attendance Generator and Smart Matcher are stored for 2 hours. 
+                Use each row's download icon for a single file, or select files to download them as one ZIP.
+                {% if session.role == 'superadmin' %}
+                <span class="ms-2">• Superadmin can manage permissions and delete files.</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Files are grouped under the day they were produced. A row is on screen
+    // only when its day is expanded AND it matches the app-type filter, so the
+    // two controls compose instead of fighting each other.
+    let currentAppFilter = 'all';
+
+    function isGroupCollapsed(groupId) {
+        const header = document.querySelector('tr.date-group-header[data-group="' + groupId + '"]');
+        return !!(header && header.classList.contains('is-collapsed'));
+    }
+
+    function applyRowVisibility() {
+        const rows = document.querySelectorAll('#filesTableBody tr[data-file-id]');
+        const matchesPerGroup = {};
+        let matchingCount = 0;
+
+        rows.forEach(row => {
+            const group = row.dataset.group;
+            const matches = (currentAppFilter === 'all' || row.dataset.app === currentAppFilter);
+            if (matches) {
+                matchingCount++;
+                matchesPerGroup[group] = (matchesPerGroup[group] || 0) + 1;
+            }
+            row.style.display = (matches && !isGroupCollapsed(group)) ? '' : 'none';
+        });
+
+        // A day with nothing left after filtering drops out entirely, and the
+        // remaining headers report how many of their files matched.
+        document.querySelectorAll('tr.date-group-header').forEach(header => {
+            const count = matchesPerGroup[header.dataset.group] || 0;
+            header.style.display = count === 0 ? 'none' : '';
+            const badge = header.querySelector('.group-count');
+            if (badge) {
+                badge.textContent = count + (count === 1 ? ' file' : ' files');
+            }
+            const caret = header.querySelector('.group-caret');
+            if (caret) {
+                caret.style.transform = header.classList.contains('is-collapsed')
+                    ? 'rotate(-90deg)' : 'rotate(0deg)';
+            }
+        });
+
+        const counter = document.getElementById('visibleFilesCount');
+        if (counter) { counter.textContent = matchingCount; }
+
+        const selectAll = document.getElementById('selectAll');
+        if (selectAll) { selectAll.checked = false; }
+        updateSelectedCount();
+    }
+
+    function toggleDateGroup(groupId) {
+        const header = document.querySelector('tr.date-group-header[data-group="' + groupId + '"]');
+        if (!header) { return; }
+        header.classList.toggle('is-collapsed');
+        applyRowVisibility();
+    }
+
+    function setAllDateGroups(expand) {
+        document.querySelectorAll('tr.date-group-header').forEach(header => {
+            header.classList.toggle('is-collapsed', !expand);
+        });
+        applyRowVisibility();
+    }
+
+    // Filter by app type
+    function filterByApp(filter, btn) {
+        document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentAppFilter = filter;
+        applyRowVisibility();
+    }
+
+    document.addEventListener('DOMContentLoaded', applyRowVisibility);
+    
+    // Toggle select all
+    function toggleSelectAll(checkbox) {
+        const visibleRows = document.querySelectorAll('#filesTableBody tr[data-file-id]:not([style*="display: none"])');
+        visibleRows.forEach(row => {
+            const cb = row.querySelector('.file-checkbox');
+            if (!cb.disabled) {
+                cb.checked = checkbox.checked;
+            }
+        });
+        updateSelectedCount();
+    }
+    
+    // Update selected count
+    function updateSelectedCount() {
+        const visibleRows = document.querySelectorAll('#filesTableBody tr[data-file-id]:not([style*="display: none"])');
+        const checkedCount = Array.from(visibleRows).filter(row => {
+            const cb = row.querySelector('.file-checkbox');
+            return cb && !cb.disabled && cb.checked;
+        }).length;
+        
+        document.getElementById('selectedCount').textContent = checkedCount;
+        
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+        if (deleteBtn) deleteBtn.disabled = checkedCount === 0;
+
+        // The ZIP button stays usable with nothing ticked - it just means "all".
+        // Its label says which of the two it will do, so there is no guessing.
+        const zipLabel = document.getElementById('downloadZipLabel');
+        if (zipLabel) {
+            zipLabel.textContent = checkedCount === 0
+                ? 'Download All ZIP'
+                : `Download Selected (${checkedCount})`;
+        }
+
+
+        // Update select all checkbox state
+        const selectAll = document.getElementById('selectAll');
+        const enabledCheckboxes = Array.from(visibleRows).filter(row => {
+            const cb = row.querySelector('.file-checkbox');
+            return cb && !cb.disabled;
+        });
+        if (enabledCheckboxes.length > 0) {
+            selectAll.checked = checkedCount === enabledCheckboxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < enabledCheckboxes.length;
+        }
+    }
+    
+    // Download naming preference (with/without app name) - applies to all downloads
+    const DOWNLOAD_NAMING_STORAGE_KEY = 'attendancify_download_naming_pref';
+
+    function getDownloadNamingPref() {
+        const sel = document.getElementById('downloadNamingPref');
+        return sel ? sel.value : 'with_app_name';
+    }
+
+    function updateDownloadNaming() {
+        const naming = getDownloadNamingPref();
+        try { localStorage.setItem(DOWNLOAD_NAMING_STORAGE_KEY, naming); } catch (e) { /* ignore storage errors */ }
+
+        document.querySelectorAll('.row-download-link').forEach(link => {
+            const url = new URL(link.href, window.location.origin);
+            url.searchParams.set('naming', naming);
+            link.href = url.toString();
+        });
+    }
+
+    // Download as ZIP: the ticked rows, or everything when nothing is ticked.
+    function downloadSelected() {
+        const selected = Array.from(document.querySelectorAll('#filesTableBody tr[data-file-id]:not([style*="display: none"]) .file-checkbox:checked'))
+            .map(cb => cb.closest('tr').dataset.fileId);
+
+        const params = new URLSearchParams();
+        selected.forEach(fileId => params.append('file_ids', fileId));
+        params.append('naming', getDownloadNamingPref());
+        // Carry the owner view through, so "Download All" means all of what is
+        // on screen rather than everything on the system.
+        const owner = new URLSearchParams(window.location.search).get('owner');
+        if (owner) { params.append('owner', owner); }
+        window.location.href = `/admin/processed_files/download_zip?${params.toString()}`;
+    }
+    
+    // Delete selected files (superadmin only)
+    async function deleteSelected() {
+        const selected = Array.from(document.querySelectorAll('#filesTableBody tr[data-file-id]:not([style*="display: none"]) .file-checkbox:checked'))
+            .map(cb => cb.closest('tr').dataset.fileId);
+        
+        if (selected.length === 0) return;
+        
+        if (confirm(`Delete ${selected.length} selected file(s)?`)) {
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            if (deleteBtn) deleteBtn.disabled = true;
+            try {
+                const response = await fetch('/admin/processed_files/delete_selected', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+                    body: JSON.stringify({ file_ids: selected })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    alert(data.message || 'Delete failed');
+                    updateSelectedCount();
+                    return;
+                }
+                window.location.reload();
+            } catch (error) {
+                alert('Error deleting selected files');
+                updateSelectedCount();
+            }
+        }
+    }
+    
+    // Rename functionality
+    function startRename(span) {
+        const fileId = span.dataset.fileId;
+        const fullName = span.dataset.fullName;
+        const input = span.nextElementSibling;
+        
+        // Hide span, show input
+        span.classList.add('d-none');
+        input.classList.remove('d-none');
+        input.value = fullName;
+        input.focus();
+        input.select();
+    }
+    
+    function cancelRename(input) {
+        setTimeout(() => {
+            const span = input.previousElementSibling;
+            input.classList.add('d-none');
+            span.classList.remove('d-none');
+        }, 150);
+    }
+    
+    function handleRenameKey(event, input) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            saveRename(input);
+        } else if (event.key === 'Escape') {
+            cancelRename(input);
+        }
+    }
+    
+    function saveRename(input) {
+        const fileId = input.dataset.fileId;
+        const newName = input.value.trim();
+        const span = input.previousElementSibling;
+        
+        if (!newName) {
+            cancelRename(input);
+            return;
+        }
+        
+        // Send rename request
+        fetch(`/admin/processed_files/rename/${fileId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({ new_name: newName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update display
+                span.dataset.fullName = newName;
+                span.title = newName;
+                span.textContent = newName.length > 45 ? newName.substring(0, 45) + '...' : newName;
+                input.classList.add('d-none');
+                span.classList.remove('d-none');
+            } else {
+                alert(data.message || 'Rename failed');
+                cancelRename(input);
+            }
+        })
+        .catch(err => {
+            alert('Error renaming file');
+            cancelRename(input);
+        });
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSelectedCount();
+
+        // Restore saved naming preference, then apply it to the download links
+        try {
+            const savedNaming = localStorage.getItem(DOWNLOAD_NAMING_STORAGE_KEY);
+            const namingSel = document.getElementById('downloadNamingPref');
+            if (savedNaming && namingSel) {
+                namingSel.value = savedNaming;
+            }
+        } catch (e) { /* ignore storage errors */ }
+        updateDownloadNaming();
+
+        // Add tooltip for full filename on hover
+        document.querySelectorAll('.file-name-display').forEach(span => {
+            span.addEventListener('mouseenter', function() {
+                this.title = this.dataset.fullName;
+            });
+        });
+    });
+</script>
+{% endblock %}

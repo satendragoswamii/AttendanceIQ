@@ -1,0 +1,215 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Activity Logs - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h2 class="mb-0"><i class="fas fa-history me-2"></i>Activity Logs</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Management Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="fas fa-trash-alt me-2"></i>Log Management</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('delete_logs') }}" onsubmit="return confirm('Are you sure you want to delete these logs? This action cannot be undone.');">
+                {{ csrf_field() }}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Delete Old Logs</label>
+                        <div class="input-group">
+                            <input type="number" name="days" class="form-control" placeholder="Days" value="30" min="1">
+                            <button type="submit" name="action" value="delete_old" class="btn btn-warning">
+                                <i class="fas fa-calendar-times me-1"></i>Delete Logs Older Than
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Delete All Logs</label>
+                        <button type="submit" name="action" value="delete_all" class="btn btn-danger w-100">
+                            <i class="fas fa-trash me-1"></i>Delete All Activity Logs
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('activity_logs') }}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="user" class="form-label">User Email</label>
+                        <input type="text" id="user" name="user" class="form-control" placeholder="Filter by user email" value="{{ user_filter }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="action" class="form-label">Action Type</label>
+                        <input type="text" id="action" name="action" class="form-control" placeholder="Filter by action type" value="{{ action_filter }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ip" class="form-label">IP Address</label>
+                        <input type="text" id="ip" name="ip" class="form-control" placeholder="e.g. 103.21. matches the range" value="{{ ip_filter }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-1"></i>Filter
+                        </button>
+                        {% if user_filter or action_filter or ip_filter %}
+                        <a href="{{ url_for('activity_logs') }}" class="btn btn-outline-secondary" title="Clear filters">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Addresses seen recently -->
+    {% if ip_summary %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-network-wired me-2"></i>Addresses seen in the last 30 days</h5>
+            <small class="text-muted">Shared addresses listed first</small>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>IP Address</th>
+                            <th>Accounts</th>
+                            <th>Events</th>
+                            <th>First seen</th>
+                            <th>Last seen</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in ip_summary %}
+                        <tr>
+                            <td><code>{{ entry.ip_address }}</code></td>
+                            <td>
+                                {% if entry.user_count > 1 %}
+                                <span class="badge bg-warning text-dark" title="{{ entry.users }}">{{ entry.user_count }} accounts</span>
+                                {% else %}
+                                <small>{{ entry.users }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ entry.event_count }}</td>
+                            <td><small>{{ entry.first_seen }}</small></td>
+                            <td><small>{{ entry.last_seen }}</small></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('activity_logs', ip=entry.ip_address) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-search me-1"></i>Trace
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Logs Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Activity Logs</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action Type</th>
+                            <th>Description</th>
+                            <th>IP Address</th>
+                            <th>Client</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if logs %}
+                            {% for log in logs %}
+                            <tr>
+                                <td><small>{{ log.timestamp }}</small></td>
+                                <td><strong>{{ log.user_email }}</strong></td>
+                                <td>
+                                    <span class="badge
+                                        {% if log.action_type in ['user_deletion', 'login_failed'] %}bg-danger
+                                        {% elif log.action_type == 'settings_update' %}bg-warning
+                                        {% elif log.action_type == 'file_deletion' %}bg-info
+                                        {% elif log.action_type in ['password_change', 'password_reset'] %}bg-primary
+                                        {% elif log.action_type == 'login' %}bg-success
+                                        {% else %}bg-secondary
+                                        {% endif %}">
+                                        {{ log.action_type }}
+                                    </span>
+                                </td>
+                                <td>{{ log.action_description or 'N/A' }}</td>
+                                <td>
+                                    {% if log.ip_address and log.ip_address != 'Unknown' %}
+                                    <a href="{{ url_for('activity_logs', ip=log.ip_address) }}"
+                                       title="Show everything from this address"><code>{{ log.ip_address }}</code></a>
+                                    {% else %}
+                                    <code>Unknown</code>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted d-inline-block text-truncate" style="max-width: 220px;"
+                                           title="{{ log.user_agent or 'Unknown' }}">{{ log.user_agent or 'Unknown' }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">No activity logs found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('activity_logs', page=page-1, user=user_filter, action=action_filter, ip=ip_filter) }}">Previous</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                            <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                        {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('activity_logs', page=p, user=user_filter, action=action_filter, ip=ip_filter) }}">{{ p }}</a></li>
+                        {% elif p == 4 or p == total_pages - 3 %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('activity_logs', page=page+1, user=user_filter, action=action_filter, ip=ip_filter) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

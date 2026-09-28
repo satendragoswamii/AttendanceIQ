@@ -1,0 +1,261 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}{{ app_names.app2 if app_names else 'Intelligent Record Matcher' }} - {{ site_settings.app_name }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Attendance Matching specific styles */
+    .file-pair-row {
+        transition: all 0.3s ease;
+        background: var(--bg-elevated);
+        border-left: 4px solid var(--primary-accent) !important;
+    }
+    
+    .file-pair-row:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    
+    .file-name-display {
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s ease;
+        background-color: var(--bg-elevated) !important;
+        color: var(--success-accent) !important;
+        border: 1px solid var(--border-color) !important;
+        margin-top: 0.25rem;
+    }
+    
+    .file-name-display:not(:empty) {
+        min-height: 30px;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .form-label {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    
+    .btn-outline-primary {
+        border-width: 2px;
+    }
+    
+    .btn-outline-primary:hover {
+        border-width: 2px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 991px) {
+        .tool-page-container {
+            padding: 0.25rem;
+        }
+    }
+</style>
+
+<div class="container-fluid py-2 tool-page-container" style="height: 100%; overflow-y: hidden;">
+    <div class="row justify-content-center">
+        <div class="col-xxl-10 col-xl-11 col-lg-12">
+            <div class="card tool-card">
+                <div class="card-header d-flex justify-content-between align-items-center py-2 px-3">
+                    <h3 class="mb-0 fs-5"><i class="fas fa-exchange-alt me-2"></i>{{ app_names.app2 if app_names else 'Intelligent Record Matcher' }}</h3>
+                    <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary py-1 px-2">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Home
+                    </a>
+                </div>
+                <div class="card-body p-1">
+                    {% include 'partials/_login_status.html' %}
+                    
+                    <div class="row">
+                        <div class="col-lg-6 mb-2 mb-lg-0 pe-lg-3">
+                            <h5 class="mb-3">Upload Files for Matching</h5>
+                            <p class="small text-muted mb-3">Match your attendance raw files against a master student list or a predefined batch.</p>
+                            {% if session.user_id %}
+                            <a href="{{ url_for('smart_matcher_auto') }}" class="btn btn-outline-success btn-sm mb-3">
+                                <i class="fas fa-magic me-1"></i>Auto-match generated server files
+                            </a>
+                            {% endif %}
+
+                            <div class="mb-2">
+                                <h6 class="mb-1 text-primary">File Pair Management</h6>
+                                <form id="matchingForm" method="POST" action="{{ url_for('process_attendance_matching') }}" enctype="multipart/form-data" data-progress="smart-matcher">
+                                    {{ csrf_field() }}
+
+                                    {% if session.role == 'superadmin' or can_use_batch_matching %}
+                                    <!-- Match mode selector -->
+                                    <div class="mb-2 p-2 border rounded bg-light">
+                                        <label class="form-label small fw-semibold mb-1">Match Mode</label>
+                                        <div class="d-flex flex-wrap gap-3 align-items-center">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="match_mode" id="match_mode_file" value="file" checked>
+                                                <label class="form-check-label small" for="match_mode_file">
+                                                    <i class="fas fa-file me-1"></i>Upload master file per pair
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="match_mode" id="match_mode_batch" value="batch">
+                                                <label class="form-check-label small" for="match_mode_batch">
+                                                    <i class="fas fa-users me-1"></i>Use saved batch (single batch + multiple raw files)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Group & Batch Selectors -->
+                                        <div class="batch-select-wrapper w-100 mt-2">
+                                            <div class="row g-1">
+                                                <div class="col-md-4 col-sm-12" id="global_group_col">
+                                                    <label class="form-label small fw-semibold mb-0" style="font-size: 0.65rem;">Group</label>
+                                                    {% if groups|length == 1 %}
+                                                    <div class="small fw-semibold text-truncate" style="height: 31px; display: flex; align-items: center; font-size: 0.75rem;" title="{{ groups[0].name }}">
+                                                        <i class="fas fa-users me-1 text-muted"></i>{{ groups[0].name }}
+                                                    </div>
+                                                    <select class="form-select form-select-sm d-none" id="global_group_id">
+                                                        <option value="">Select Group...</option>
+                                                        <option value="{{ groups[0].id }}" selected>{{ groups[0].name }}</option>
+                                                    </select>
+                                                    {% else %}
+                                                    <select class="form-select form-select-sm" id="global_group_id">
+                                                        <option value="">Select Group...</option>
+                                                        {% for g in groups %}
+                                                        <option value="{{ g.id }}">{{ g.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-4 col-sm-12" id="global_subgroup_col" style="display: none;">
+                                                    <label class="form-label small fw-semibold mb-0" style="font-size: 0.65rem;">Sub-Group</label>
+                                                    <select class="form-select form-select-sm" id="global_subgroup_id" disabled>
+                                                        <option value="">Select Sub-Group...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4 col-sm-12" id="global_batch_col" style="display: none;">
+                                                    <label class="form-label small fw-semibold mb-0" style="font-size: 0.65rem;">Batch</label>
+                                                    <select class="form-select form-select-sm" name="batch_id" id="batch_id" disabled>
+                                                        <option value="">Select Batch...</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="small text-muted mt-2 mb-0" id="match_mode_description">File mode: match multiple file pairs, either upload master file or select batch for each pair.</p>
+                                    </div>
+                                    {% endif %}
+
+                                    <input type="hidden" id="pair_count" name="pair_count" value="1">
+                                    <div id="file-pairs-container">
+                                        <!-- Initial File Pair -->
+                                        <div class="file-pair-row border rounded p-0 mb-1 shadow-sm" data-pair-index="0">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <h6 class="mb-0 fs-6 fw-bold text-secondary">File Pair #1</h6>
+                                                <span class="badge bg-primary">Current</span>
+                                            </div>
+                                            <div class="row g-0">
+                                                <div class="col-md-12 mb-1">
+                                                    <label class="form-label small fw-semibold mb-1">Master</label>
+                                                    {% if session.role == 'superadmin' or can_use_batch_matching %}
+                                                    <div id="master-source-selector-0" class="mb-1"></div>
+                                                    {% endif %}
+                                                    <div class="master-file-wrapper" id="master-file-wrapper-0">
+                                                        <input class="form-control form-control-sm master-input" type="file" name="master_file_0" accept=".csv,.xlsx" required {% if not session.user_id %}disabled{% endif %}>
+                                                        <div class="file-name-display small text-success fw-bold p-0 rounded" id="master_file_name_0"></div>
+                                                    </div>
+                                                    <div class="master-batch-wrapper" id="master-batch-wrapper-0"></div>
+                                                </div>
+                                                <div class="col-md-12 mb-1">
+                                                    <label class="form-label small fw-semibold mb-1">Raw File</label>
+                                                    <input class="form-control form-control-sm raw-input" type="file" name="raw_file_0" accept=".csv,.xlsx" multiple required {% if not session.user_id %}disabled{% endif %}>
+                                                    <div class="form-text small mb-0"><i class="fas fa-layer-group me-1"></i>Bulk upload: select several raw files at once and each one becomes its own pair automatically. In batch mode, the relevant batch is auto-detected per file (group or sub-group); in file mode, the master file/batch carries over.</div>
+                                                    <div class="file-name-display small text-success fw-bold p-0 rounded" id="raw_file_name_0"></div>
+                                                </div>
+                                            </div>
+                                            <div class="text-end mt-1">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-pair-btn py-1 px-2" disabled>
+                                                    <i class="fas fa-trash-alt me-1"></i>Remove Pair
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 text-center">
+                                        <hr class="my-3">
+                                        <button type="button" id="add-pair-btn" class="btn btn-sm btn-outline-primary w-100 py-2">
+                                            <i class="fas fa-plus-circle me-2"></i>Add Another File Pair
+                                        </button>
+                                        <hr class="my-3">
+                                    </div>
+                                    
+                                    <div class="mb-3 p-2 output-format-section rounded">
+                                        <label class="form-label small fw-semibold mb-1">Output Format</label>
+                                        <div class="d-flex gap-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="output_format" id="xlsxFormat" value="xlsx" checked>
+                                                <label class="form-check-label small" for="xlsxFormat">Excel (.xlsx)</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="output_format" id="csvFormat" value="csv">
+                                                <label class="form-check-label small" for="csvFormat">CSV (.csv)</label>
+                                            </div>
+                                        </div>
+                                        {% if session.role == 'superadmin' or can_use_batch_matching %}
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" name="include_institute_email" id="includeInstituteEmail" value="1">
+                                            <label class="form-check-label small" for="includeInstituteEmail">
+                                                Include Institute Email in generated file <span class="text-muted">(batch mode only, if saved on the student)</span>
+                                            </label>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="alert alert-warning compact d-flex align-items-center py-1 px-2 mb-2">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        <span class="small">Human verification required for this tool</span>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary w-100 btn-sm py-2" id="submitBtn" {% if not session.user_id %}disabled{% endif %}>
+                                        <i class="fas fa-exchange-alt me-2"></i>Match Files
+                                    </button>
+                                    <!-- Results section -->
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6 ps-lg-3">
+                            {% include 'partials/_how_to_use_matching.html' %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle Smart Matcher form submission (handled by external smart-matcher.js)
+window.smartMatcherGroups = [
+    {% for g in groups %}
+    { id: {{ g.id }}, name: "{{ g.name }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+window.smartMatcherSubgroups = [
+    {% for sg in subgroups %}
+    { id: {{ sg.id }}, name: "{{ sg.name }}", groupId: {{ sg.group_id }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+window.smartMatcherBatches = [
+    {% for b in batches %}
+    { id: {{ b.id }}, name: "{{ b.name }}", count: {{ batch_counts.get(b.id, 0) }}, groupId: {{ b.group_id or 'null' }}, subgroupId: {{ b.subgroup_id or 'null' }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+window.canUseBatchMatching = {{ 'true' if (session.role == 'superadmin' or can_use_batch_matching) else 'false' }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the Smart Matcher functionality
+    initializeSmartMatcher('matchingForm', 'add-pair-btn', 'file-pairs-container', 'pair_count');
+
+    // Give the first pair its own Group/Sub-Group/Batch cascade so bulk raw-file
+    // uploads can auto-detect a different batch per file (see handleRawInputChange
+    // in smart-matcher.js), the same way the dashboard's Smart Matcher tool does.
+    if (window.canUseBatchMatching && typeof initializeBatchSelection === 'function') {
+        initializeBatchSelection(0);
+    }
+});
+</script>
+{% endblock %}

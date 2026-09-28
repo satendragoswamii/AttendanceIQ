@@ -1,0 +1,97 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+data/secret_key
+
+# Databases (attendancify.db, tango.db and SQLite WAL/SHM side files)
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+*.sql
+
+# Logs
+*.log
+logs/
+
+# User uploads / generated files
+uploads/
+upload/
+data/
+output/
+outputs/
+exports/
+generated/
+tmp/
+temp/
+backups/
+*.csv
+*.xls
+*.xlsx
+*.ics
+
+# Files uploaded through the admin Settings page (people photos, brand logos)
+static/landing/
+static/branding/
+
+# Backups and archives
+*.zip
+*.tar.gz
+*.bak
+*.bak-*
+_tango_backup_*/
+
+# User/session data
+sessions/
+flask_session/
+instance/
+*.session
+
+# Legacy admin scripts with a hardcoded default password (kept locally only)
+reset_superadmin.py
+check_admin.py
+
+# Local tool / assistant staging folders
+.claude/
+.openclaw-cli-images/
+media/
+
+# macOS
+.DS_Store
+*.textClipping
+
+# IDE
+.vscode/
+.idea/
+
+# Testing/cache
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/

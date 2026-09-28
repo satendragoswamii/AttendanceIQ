@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" style="--glass-alpha: {{ site_settings.glass_opacity / 100 }};">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ site_settings.app_name }} - Professional Attendance Management{% endblock %}</title>
+    <script>
+        // Set theme immediately to avoid dark→light flash on load. The premium
+        // home page now has both a dark and a light variant, so it follows the
+        // saved site-wide preference like every other page (default: dark).
+        (function() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+            document.body?.setAttribute('data-theme', saved);
+        })();
+    </script>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/attendancify-modern.css') }}?v=2.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/processing-progress.css') }}?v=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/soft-reveal.css') }}?v=1">
+    <script>
+        // Soft reveal: arm the hidden state before the first paint so content
+        // animates in rather than flashing. Skipped entirely when the visitor
+        // prefers reduced motion, and released automatically if the reveal
+        // script never gets a chance to run.
+        (function () {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            document.documentElement.classList.add('js-reveal');
+            setTimeout(function () {
+                if (!window.__softRevealReady) {
+                    document.documentElement.classList.remove('js-reveal');
+                }
+            }, 3000);
+        })();
+    </script>
+    <style>
+        /* Ensure login modal is truly centered and spaced from footer */
+        #loginModal .modal-dialog {
+            max-width: 420px;
+            width: 100%;
+        }
+        #loginModal .modal-dialog-centered {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 1.5rem 0; /* keep space from top/bottom */
+        }
+        #loginModal .modern-login-modal {
+            border-radius: 18px;
+            padding: 1.75rem 1.5rem;
+            margin: auto;
+        }
+        .modal-backdrop.show {
+            backdrop-filter: blur(12px);
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+{# force_public_landing lets the settings preview render the signed-out page
+   (no header/footer) while the superadmin is still logged in. #}
+{% set is_public_landing = force_public_landing|default(False) or (not session.user_id and request.endpoint == 'index') %}
+{% set is_tango_page = request.blueprint == 'tango' %}
+{% set is_premium_home = session.user_id and request.endpoint == 'index' %}
+<body class="{% if not show_navigation|default(False) and request.endpoint == 'index' %}home-page{% endif %}{% if is_premium_home %} premium-home{% endif %}{% if initial_tool %} split-mode-active{% endif %}" data-user-id="{{ session.user_id if session.user_id else '' }}" data-cursor-effect="{{ site_settings.cursor_effect }}" data-fluid-config='{{ site_settings.fluid | tojson }}' data-cursor-glow-shape="{{ site_settings.cursor_glow_shape }}" style="--cursor-glow-color: {{ site_settings.cursor_glow_color }}; --cursor-glow-size: {{ site_settings.cursor_glow_size }}px; --cursor-glow-opacity: {{ site_settings.cursor_glow_opacity / 100 }};">
+    <!-- Loading Screen - Only show for authenticated users - FAST -->
+    {% if session.user_id %}
+    <div id="loading-screen" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h1 class="loading-text">Welcome to <span class="attendancify-text">{{ site_settings.app_name }}</span></h1>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- App Background: glows + animated particles (same on every page) -->
+    <div id="particles-background" aria-hidden="true">
+        <div class="app-bg-glow"></div>
+        <div id="app-particles"></div>
+    </div>
+
+    <!-- Fluid cursor simulation. Kept outside #particles-background so the
+         background's mouse-parallax transform can't offset pointer positions.
+         Shown by fluid-cursor.js once WebGL is up. -->
+    <canvas id="fluid" aria-hidden="true"></canvas>
+    
+    <!-- Modern Header - No Menu, Just Brand + Controls.
+         Skipped on the signed-out landing page, which is deliberately bare:
+         no brand, no controls, just its own login button and the message. -->
+    {% if not is_public_landing and not hide_app_chrome|default(False) %}
+    <header class="simple-header">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center justify-content-between w-100">
+                <!-- Brand: uploaded logo image, or the mark + name + tagline.
+                     Tango and the signed-out landing page name a different
+                     product, so they always keep their own text brand. -->
+                {% set use_brand_image = site_settings.brand_mode == 'image' and site_settings.brand_logo and not is_tango_page and not is_public_landing %}
+                <div class="brand-area">
+                    {% if use_brand_image %}
+                    <a href="{{ url_for('index') }}" class="brand-logo-image" title="{{ site_settings.app_name }}">
+                        <img src="{{ url_for('static', filename=site_settings.brand_logo) }}" alt="{{ site_settings.app_name }}">
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('tango.tango_home') if is_tango_page else url_for('index') }}" class="brand-logo-mark" aria-hidden="true" tabindex="-1">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="brandLogoGradient" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0" stop-color="#2DD4FF"></stop>
+                                    <stop offset="0.5" stop-color="#A855F7"></stop>
+                                    <stop offset="1" stop-color="#EC4899"></stop>
+                                </linearGradient>
+                            </defs>
+                            <path d="M18 4 L30 30 L22 30 L18 20 L14 30 L6 30 Z" fill="url(#brandLogoGradient)"></path>
+                            <circle cx="27" cy="9" r="3.2" fill="url(#brandLogoGradient)"></circle>
+                        </svg>
+                    </a>
+                    <div class="brand-text-group">
+                        <a href="{{ url_for('tango.tango_home') if is_tango_page else url_for('index') }}" class="brand-logo" style="text-decoration: none;">
+                            {% if is_tango_page %}Tango{% elif is_public_landing %}Attendance &amp; Tango{% else %}{{ site_settings.app_name }}{% endif %}
+                        </a>
+                        <p class="brand-tagline" style="font-size: 0.7rem; color: var(--text-secondary); margin: 0; margin-left: 2px; letter-spacing: 0.5px;">
+                            {% if is_tango_page %}Faculty Invite Generator{% elif is_public_landing %}Two Tools, One Workspace{% else %}{{ site_settings.app_tagline }}{% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Header Controls - Right Side -->
+                <div class="d-flex ms-auto align-items-center" style="gap: 0.5rem;">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="btn" aria-label="Toggle theme" title="Toggle Theme">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                    
+                    <!-- User Account / Login -->
+                    {% if session.user_id %}
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Account">
+                            <i class="fas fa-user"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                                <li class="dropdown-header" style="background-color: var(--bg-elevated); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+                                    <small style="color: var(--text-secondary) !important; font-weight: 600;">Logged in as:</small><br>
+                                    <strong style="color: var(--text-primary) !important; font-size: 1rem;">{{ session.user_id }}</strong>
+                                </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% if request.endpoint != 'attendance_generator' %}
+                            {% set remaining = get_remaining_time(session.user_id) %}
+                            {% if remaining and remaining != 'Permanent' %}
+                            <li class="dropdown-header" style="background-color: var(--bg-elevated); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-top: 0.5rem;">
+                                <small style="color: var(--text-secondary) !important; font-weight: 600;">Access expires in:</small><br>
+                                <strong style="color: var(--warning-color) !important; font-size: 0.95rem;">{{ remaining }}</strong>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            {% else %}
+                            <!-- Hide expiry on attendance_generator page -->
+                            {% endif %}
+                            {% if is_tango_page %}
+                            <li><a class="dropdown-item" href="{{ url_for('index') }}"><i class="fas fa-exchange-alt"></i>Switch to AttendanceIQ</a></li>
+                            {% else %}
+                            {% if session.user_id == 'superadmin@attendancify.com' or user_perms.can_view_dashboard or session.role in ['admin', 'superadmin', 'subsuperadmin'] %}
+                            <li><a class="dropdown-item" href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
+                            {% endif %}
+                            {# Same rule as batch_manager_required: superadmin always, everyone
+                               else only with the permission. Keep the two in step - a menu item
+                               that leads to "Access denied" is worse than no menu item. #}
+                            {% if session.role == 'superadmin' or user_perms.can_manage_batches %}
+                            <li><a class="dropdown-item" href="{{ url_for('manage_batches') }}"><i class="fas fa-layer-group"></i>Batches</a></li>
+                            {% endif %}
+                            <li><a class="dropdown-item" href="{{ url_for('summary_tool') }}"><i class="fas fa-list-check"></i>Meeting Summary</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('processed_files_management') }}"><i class="fas fa-folder-open"></i>Processed Files</a></li>
+                            {# Same rule as tango_access_required: superadmin always, everyone
+                               else only with the permission, whatever their role. #}
+                            {% if session.role == 'superadmin' or user_perms.can_access_tango %}
+                            <li><a class="dropdown-item" href="{{ url_for('tango.tango_home') }}"><i class="fas fa-envelope-open-text"></i>Tango (Faculty Invites)</a></li>
+                            {% endif %}
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal"><i class="fas fa-key"></i>Change Password</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                    {% else %}
+                    <button class="btn" id="loginButton" aria-label="Login" title="Login">
+                        <i class="fas fa-user"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+    {% endif %}
+
+    <!-- Flash messages: floating toasts, so they never push the page layout
+         around or end up wedged under the header/brand. -->
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+        <div class="flash-toasts" id="flashToasts">
+            {% for category, message in messages %}
+                {% set alert_class = {'error': 'alert-danger', 'success': 'alert-success', 'warning': 'alert-warning'}.get(category, 'alert-info') %}
+                <div class="alert {{ alert_class }} alert-dismissible fade show compact" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <main class="main-content">
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-xxl-10 col-xl-11 col-lg-12">
+                    <div class="mt-3">
+                        {% block content %}{% endblock %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Login Modal - Enhanced Design -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modern-login-modal">
+                <!-- Close button - floating style -->
+                <button type="button" class="btn-close modern-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                
+                <!-- Logo/Brand Section -->
+                <div class="login-brand-section">
+                    <div class="login-icon-wrapper">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <h3 class="login-brand-title">Welcome Back</h3>
+                    <p class="login-brand-subtitle">Sign in to access {{ site_settings.app_name }}</p>
+                </div>
+                
+                <!-- Login Form -->
+                <div class="login-form-section">
+                    <form id="loginForm" method="POST" action="{{ url_for('login') }}">
+                        {{ csrf_field() }}
+                        <!-- Email Input -->
+                        <div class="modern-input-group">
+                            <label for="email" class="modern-label">
+                                <i class="fas fa-envelope me-2"></i>Email Address
+                            </label>
+                            <div class="modern-input-wrapper">
+                                <input type="email" 
+                                       class="form-control modern-input" 
+                                       id="email" 
+                                       name="email" 
+                                       placeholder="your.email@example.com"
+                                       required
+                                       autocomplete="email">
+                                <span class="input-border-animation"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Password Input -->
+                        <div class="modern-input-group">
+                            <label for="password" class="modern-label">
+                                <i class="fas fa-lock me-2"></i>Password
+                            </label>
+                            <div class="modern-input-wrapper password-wrapper">
+                                <input type="password" 
+                                       class="form-control modern-input" 
+                                       id="password" 
+                                       name="password" 
+                                       placeholder="Enter your password"
+                                       required
+                                       autocomplete="current-password">
+                                <button type="button" class="modern-toggle-password" id="toggleModalPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <span class="input-border-animation"></span>
+                            </div>
+                        </div>
+
+                        <!-- App Selector -->
+                        <div class="modern-input-group">
+                            <label for="modal_target_app" class="modern-label">
+                                <i class="fas fa-th-large me-2"></i>Sign in to
+                            </label>
+                            <div class="modern-input-wrapper">
+                                <select class="form-select modern-input" id="modal_target_app" name="target_app">
+                                    {# Label follows Settings -> Site Name, so the brand is written in one place. #}
+                                    <option value="attendancify" selected>{{ site_settings.app_name }}</option>
+                                    <option value="tango">Tango</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Login Button -->
+                        <button type="submit" class="btn modern-login-btn">
+                            <span class="btn-text">Sign In</span>
+                            <span class="btn-icon"><i class="fas fa-arrow-right"></i></span>
+                        </button>
+                    </form>
+                    
+                    <!-- Divider -->
+                    <div class="login-divider">
+                        <span>or</span>
+                    </div>
+                    
+                    <!-- Contact Admin Section -->
+                    <div class="login-contact-section">
+                        <p class="contact-text">Don't have an account?</p>
+                        <div class="admin-contact-card">
+                            <div class="admin-info">
+                                <i class="fas fa-user-shield admin-icon"></i>
+                                <div class="admin-details">
+                                    <strong class="admin-name">Contact Admin</strong>
+                                    <span class="admin-title">{{ site_settings.footer_author }}</span>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="mailto:{{ site_settings.footer_email }}"
+                                   class="instagram-btn"
+                                   title="{{ site_settings.footer_email }}">
+                                    <i class="fas fa-envelope"></i>
+                                    <span>Email</span>
+                                </a>
+                                <a href="{{ site_settings.footer_link }}"
+                                   target="_blank"
+                                   class="instagram-btn">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    <span>Contact</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="changePasswordForm" method="POST" action="{{ url_for('change_password') }}">
+                        {{ csrf_field() }}
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Current Password</label>
+                            <div class="password-input-container">
+                                <input type="password" class="form-control" id="current_password" name="current_password" required>
+                                <button type="button" class="toggle-password" id="toggleCurrentPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <div class="password-input-container">
+                                <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                <button type="button" class="toggle-password" id="toggleNewPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <div class="password-input-container">
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                <button type="button" class="toggle-password" id="toggleConfirmPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-login">
+                                <i class="fas fa-save me-2"></i>Change Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutModalLabel">About {{ site_settings.app_name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <h3 class="mb-3">{{ site_settings.app_name }}</h3>
+                        <p class="lead">Professional attendance management made simple</p>
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <div class="feature-icon mx-auto mb-3">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <h5 class="card-title">Fast Processing</h5>
+                                    <p class="card-text">Quickly process large attendance files with our optimized algorithms.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <div class="feature-icon mx-auto mb-3">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </div>
+                                    <h5 class="card-title">Smart Matching</h5>
+                                    <p class="card-text">Intelligent name matching using fuzzy algorithms for accurate results.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <div class="feature-icon mx-auto mb-3">
+                                        <i class="fas fa-file-export"></i>
+                                    </div>
+                                    <h5 class="card-title">Export Ready</h5>
+                                    <p class="card-text">Generate clean, structured Excel reports ready for further analysis.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span>This is an AI-based tool. Please verify results as AI can make mistakes.</span>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <p class="mb-0 text-muted">
+                            &copy; {{ site_settings.current_year }} {{ site_settings.app_name }}<br>
+                            {{ site_settings.footer_text }} <a href="{{ site_settings.footer_link }}" target="_blank" class="text-decoration-none">{{ site_settings.footer_author }}</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Use Modal -->
+    <div class="modal fade" id="howToUseModal" tabindex="-1" aria-labelledby="howToUseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="howToUseModalLabel">How to Use {{ site_settings.app_name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h4 class="mb-3">About {{ site_settings.app_name }}</h4>
+                        <p>{{ site_settings.app_name }} is a professional attendance management tool designed to simplify the process of tracking and managing attendance for educational institutions, training centers, and organizations conducting online sessions.</p>
+                        <p>Created by <strong>{{ site_settings.footer_author }}</strong>, this tool addresses the common challenges faced by educators and administrators in processing attendance data from Zoom meetings and other online platforms.</p>
+                        <p><strong>Who needs this tool?</strong></p>
+                        <ul>
+                            <li>Educators and teachers conducting online classes</li>
+                            <li>Training coordinators managing multiple sessions</li>
+                            <li>Administrative staff processing attendance reports</li>
+                            <li>Educational institutions with hybrid or online learning models</li>
+                            <li>Organizations conducting regular training sessions or meetings</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 class="mb-3">How to Use Each Tool</h4>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Attendance Generator</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>The Attendance Generator processes Zoom attendance logs to create detailed attendance reports.</p>
+                                <ol>
+                                    <li>Export attendance reports from Zoom as CSV files</li>
+                                    <li>Upload the CSV files to the Attendance Generator tool</li>
+                                    <li>Configure session requirements (minimum attendance time)</li>
+                                    <li>Review the generated attendance report</li>
+                                    <li>Download the Excel report for further use</li>
+                                </ol>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <span>Human verification is required for accurate results</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-file-excel me-2"></i>Raw Excel Generator</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>The Raw Excel Generator extracts and standardizes attendance data from various Excel formats.</p>
+                                <ol>
+                                    <li>Upload Excel files containing attendance data</li>
+                                    <li>The tool will extract and standardize the data</li>
+                                    <li>Review the standardized output</li>
+                                    <li>Download the clean, structured Excel file</li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Attendance Matching</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>The Attendance Matching tool intelligently matches attendance records from different sources.</p>
+                                <ol>
+                                    <li>Upload a master student list (Excel format)</li>
+                                    <li>Upload raw attendance files</li>
+                                    <li>The tool will match records using intelligent name matching algorithms</li>
+                                    <li>Review matched and unmatched records</li>
+                                    <li>Download the final matched attendance report</li>
+                                </ol>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <span>Human verification is required for unmatched records</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="mb-0 text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            This is an AI-based tool. Please verify results as AI can make mistakes.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Footer is skipped on the signed-out landing page and on pages that
+         bring their own shell (the dashboard). See the header above. -->
+    {% if not is_public_landing and not hide_app_chrome|default(False) %}
+    <footer class="footer">
+        <div class="container-fluid">
+            {# One footer everywhere. The dashboard is the exception: it hides
+               the app chrome (hide_app_chrome) and renders its own .ds-foot. #}
+            <div class="d-flex justify-content-center align-items-center flex-wrap gap-3 position-relative">
+                <span class="text-muted">
+                    {% if is_tango_page %}Tango{% else %}{{ site_settings.app_name }}{% endif %} &copy; {{ site_settings.current_year }} |
+                    <a href="{{ site_settings.footer_link }}" target="_blank" class="text-decoration-none">
+                        {{ site_settings.footer_text }} {{ site_settings.footer_author }}
+                    </a>
+                    | <a href="mailto:{{ site_settings.footer_email }}" class="text-decoration-none">
+                        <i class="fas fa-envelope me-1"></i>{{ site_settings.footer_email }}
+                    </a>
+                </span>
+                <span class="footer-made-with"><i class="fas fa-heart"></i>Made with</span>
+            </div>
+        </div>
+    </footer>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app-background.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/fluid-cursor.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/soft-reveal.js') }}?v=1"></script>
+    <script>
+        // ------------------------------------------------------------------
+        // POSTing from JavaScript
+        //
+        // Every unsafe request must carry the CSRF token or the server answers
+        // 400 "Security check failed". Forms written in a template pick it up
+        // from {{ '{{ csrf_field() }}' }}; forms built in script never pass through Jinja,
+        // so they have to add it themselves. A listener cannot do it for them
+        // either - form.submit() deliberately fires no 'submit' event - so any
+        // script that POSTs must go through this helper.
+        window.CSRF_TOKEN = '{{ csrf_token() }}';
+
+        window.postForm = function (action, fields) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = action;
+
+            const values = Object.assign({ '_csrf_token': window.CSRF_TOKEN }, fields || {});
+            Object.keys(values).forEach(function (name) {
+                const value = values[name];
+                if (value === undefined || value === null) return;
+                (Array.isArray(value) ? value : [value]).forEach(function (v) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = v;
+                    form.appendChild(input);
+                });
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        };
+
+        // Fast loading screen - reduced time
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we should show the loading screen
+            const isHomePage = document.body.classList.contains('home-page');
+            const isLoggedIn = document.body.getAttribute('data-user-id') !== '';
+            
+            if (isHomePage && isLoggedIn) {
+                // Show loading screen for only 0.8 seconds (fast)
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'flex';
+                    setTimeout(function() {
+                        loadingScreen.style.opacity = '0';
+                        setTimeout(function() {
+                            loadingScreen.style.display = 'none';
+                        }, 300);
+                    }, 800); // Reduced from 2000ms to 800ms
+                }
+            }
+            
+            // Flash toasts: success/info fade out on their own after 5s.
+            // Warnings and errors stay put until the user closes them.
+            document.querySelectorAll('#flashToasts .alert-success, #flashToasts .alert-info').forEach(function(alertEl) {
+                setTimeout(function() {
+                    bootstrap.Alert.getOrCreateInstance(alertEl).close();
+                }, 5000);
+            });
+
+            // Login button functionality
+            const loginButton = document.getElementById('loginButton');
+            if (loginButton) {
+                loginButton.addEventListener('click', function() {
+                    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                });
+            }
+            
+            // Handle login modal form submission
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    const submitButton = this.querySelector('.btn-login');
+                    if (submitButton) {
+                        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Authenticating...';
+                        submitButton.disabled = true;
+                    }
+                });
+            }
+            
+            // Password visibility toggle in login modal
+            const toggleModalPassword = document.getElementById('toggleModalPassword');
+            const modalPasswordInput = document.getElementById('password');
+            
+            if (toggleModalPassword && modalPasswordInput) {
+                toggleModalPassword.addEventListener('click', function() {
+                    const type = modalPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    modalPasswordInput.setAttribute('type', type);
+                    
+                    // Toggle eye icon
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fa-eye');
+                        icon.classList.toggle('fa-eye-slash');
+                    }
+                });
+            }
+            
+            // Password visibility toggles in change password modal
+            const toggleCurrentPassword = document.getElementById('toggleCurrentPassword');
+            const currentPasswordInput = document.getElementById('current_password');
+            const toggleNewPassword = document.getElementById('toggleNewPassword');
+            const newPasswordInput = document.getElementById('new_password');
+            const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+            const confirmPasswordInput = document.getElementById('confirm_password');
+            
+            if (toggleCurrentPassword && currentPasswordInput) {
+                toggleCurrentPassword.addEventListener('click', function() {
+                    const type = currentPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    currentPasswordInput.setAttribute('type', type);
+                    
+                    // Toggle eye icon
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fa-eye');
+                        icon.classList.toggle('fa-eye-slash');
+                    }
+                });
+            }
+            
+            if (toggleNewPassword && newPasswordInput) {
+                toggleNewPassword.addEventListener('click', function() {
+                    const type = newPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    newPasswordInput.setAttribute('type', type);
+                    
+                    // Toggle eye icon
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fa-eye');
+                        icon.classList.toggle('fa-eye-slash');
+                    }
+                });
+            }
+            
+            if (toggleConfirmPassword && confirmPasswordInput) {
+                toggleConfirmPassword.addEventListener('click', function() {
+                    const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    confirmPasswordInput.setAttribute('type', type);
+                    
+                    // Toggle eye icon
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fa-eye');
+                        icon.classList.toggle('fa-eye-slash');
+                    }
+                });
+            }
+            
+            // Form submission with loading state
+            // (loginForm event listener already defined above)
+            
+            // Handle change password form submission
+            const changePasswordForm = document.getElementById('changePasswordForm');
+            if (changePasswordForm) {
+                changePasswordForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = this.querySelector('.btn-login');
+                    const originalButtonText = submitButton.innerHTML;
+                    
+                    if (submitButton) {
+                        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Changing Password...';
+                        submitButton.disabled = true;
+                    }
+                    
+                    // Collect form data
+                    const formData = new FormData(this);
+                    
+                    // Send AJAX request
+                    fetch('{{ url_for("change_password") }}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Close modal and show success message
+                            const changePasswordModal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
+                            changePasswordModal.hide();
+                            
+                            // Show success message
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                            alertDiv.style.top = '20px';
+                            alertDiv.style.right = '20px';
+                            alertDiv.style.zIndex = '9999';
+                            alertDiv.innerHTML = `
+                                <strong>Success!</strong> ${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            `;
+                            document.body.appendChild(alertDiv);
+                            
+                            // Remove alert after 5 seconds
+                            setTimeout(() => {
+                                alertDiv.remove();
+                            }, 5000);
+                            
+                            // Reset form
+                            changePasswordForm.reset();
+                        } else {
+                            // Show error message
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                            alertDiv.innerHTML = `
+                                <strong>Error!</strong> ${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            `;
+                            changePasswordForm.parentNode.insertBefore(alertDiv, changePasswordForm);
+                            
+                            // Remove alert after 5 seconds
+                            setTimeout(() => {
+                                alertDiv.remove();
+                            }, 5000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        // Show error message
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <strong>Error!</strong> An unexpected error occurred.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        changePasswordForm.parentNode.insertBefore(alertDiv, changePasswordForm);
+                        
+                        // Remove alert after 5 seconds
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 5000);
+                    })
+                    .finally(() => {
+                        // Restore button state
+                        if (submitButton) {
+                            submitButton.innerHTML = originalButtonText;
+                            submitButton.disabled = false;
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/smart-matcher.js') }}?v=20260602-multi-upload"></script>
+    {# Stage text and behaviour come from Settings; the script falls back to its
+       own defaults if this is ever missing. #}
+    <script>window.PROCESSING_PROGRESS_CONFIG = {{ processing_overlay|tojson }};</script>
+    <script src="{{ url_for('static', filename='js/processing-progress.js') }}?v=2"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

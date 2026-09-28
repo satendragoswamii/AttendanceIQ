@@ -1,0 +1,1032 @@
+/* ========================================================================
+   LANDING STORY PAGE
+   The signed-out page: a sidebar of story navigation next to a long-form
+   story (hero, timeline, quote, support, values, thank you).
+   Uses the app's glass tokens so it sits on the same animated background as
+   everything else.
+   ======================================================================== */
+
+.lp {
+  --lp-ink: #E7ECF8;
+  --lp-muted: #96A2C4;
+  --lp-heading: #FFFFFF;
+  --lp-accent: #55B8FF;
+  --lp-accent2: #A855F7;
+  --lp-panel: var(--glass-surface, rgba(20, 28, 58, 0.82));
+  --lp-panel-soft: var(--glass-surface-soft, rgba(24, 33, 66, 0.55));
+  --lp-line: var(--glass-hairline, rgba(255, 255, 255, 0.08));
+  /* The colour the writing fades into at the foot of a framed panel. Stated
+     outright rather than taken from the glass, whose alpha is user-set and too
+     see-through to hide a line of text behind. */
+  --lp-scrim: 13, 19, 43;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 22px;
+  max-width: 1400px;
+  margin: 0 auto;
+  /* No padding at the foot: the sidebar rail is clamped to the bottom of this
+     box, and any gap here would push it up at the end of the page. The story
+     column carries that spacing instead. */
+  padding: 24px 24px 0;
+  color: var(--lp-ink);
+  align-items: start;
+}
+
+[data-theme="light"] .lp {
+  --lp-ink: #33415C;
+  --lp-muted: #64748B;
+  --lp-heading: #0F172A;
+  --lp-accent: #1D4ED8;
+  --lp-accent2: #7C3AED;
+  --lp-scrim: 241, 245, 251;
+}
+
+.lp p { color: var(--lp-ink) !important; margin: 0 0 14px; line-height: 1.7; font-size: 14.5px; }
+.lp strong { color: var(--lp-heading); font-weight: 700; }
+.lp h1, .lp h2, .lp h3, .lp h4 { color: var(--lp-heading) !important; }
+
+/* ------------------------------------------------------------- sidebar */
+
+/* Gap kept at the top of the window for panels too tall to be centred. */
+.lp { --lp-top: 24px; }
+
+/* The sidebar rides in the middle of the window, which is where every panel
+   that fits comes to rest too, so the two stay level with each other.
+
+   It is done with a rail exactly one screen tall stuck to the top, with the
+   panels centred inside it - not by sticking the panels themselves half way
+   down and lifting them with a transform. Sticky clamps the *layout* box to
+   the containing block and the transform is applied afterwards, so that
+   version got shoved upwards near the end of the page. */
+.lp-side { align-self: stretch; }
+
+.lp-side-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  justify-content: safe center;   /* keeps the top reachable if it overflows */
+  gap: 18px;
+  padding: var(--lp-top) 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.lp-panel {
+  background: var(--lp-panel);
+  border: 1px solid var(--lp-line);
+  border-radius: 18px;
+  box-shadow: var(--glass-shadow, 0 18px 40px rgba(0, 0, 0, 0.35));
+  backdrop-filter: var(--glass-blur, blur(16px) saturate(150%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(150%));
+}
+
+.lp-side-inner { padding: 18px 16px; }
+
+.lp-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; margin-bottom: 22px; }
+
+.lp-brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #22D3EE, #7C3AED);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35);
+}
+
+.lp-brand-name { font-size: 19px; font-weight: 800; letter-spacing: -0.4px; color: var(--lp-heading); line-height: 1.15; }
+.lp-brand-by { font-size: 11.5px; color: var(--lp-muted); }
+
+.lp-nav-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lp-muted);
+  margin-bottom: 10px;
+}
+
+.lp-nav { display: flex; flex-direction: column; gap: 4px; }
+
+.lp-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  color: var(--lp-ink);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.lp-nav a i { width: 16px; text-align: center; font-size: 13px; color: var(--lp-muted); }
+.lp-nav a:hover { background: rgba(255, 255, 255, 0.06); color: var(--lp-heading); }
+[data-theme="light"] .lp-nav a:hover { background: rgba(15, 23, 42, 0.05); }
+
+.lp-nav a.is-active {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.26), rgba(139, 92, 246, 0.16));
+  color: #fff;
+  font-weight: 600;
+}
+
+.lp-nav a.is-active i { color: #7DD3FC; }
+[data-theme="light"] .lp-nav a.is-active { color: #1D4ED8; }
+
+.lp-access-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--lp-heading);
+  margin-bottom: 10px;
+}
+
+.lp-access p { font-size: 12.5px; color: var(--lp-muted) !important; line-height: 1.6; margin-bottom: 14px; }
+
+.lp-person { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.lp-person .lp-avatar.has-photo { width: 42px; height: 42px; }
+.lp-person + .lp-person { border-top: 1px solid var(--lp-line); }
+
+.lp-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #3B82F6, #A855F7);
+}
+
+.lp-avatar.is-warm { background: linear-gradient(135deg, #F97316, #EC4899); }
+
+/* An uploaded photo fills the circle whatever its size or aspect ratio:
+   object-fit crops it centrally, so nothing has to be resized first. The image
+   is positioned absolutely because a percentage height against an auto-sized
+   grid row is cyclic - a tall portrait would keep its own height instead. */
+.lp-avatar.has-photo {
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.45);
+}
+
+.lp-avatar img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.lp-person-name { font-size: 13px; font-weight: 600; color: var(--lp-heading); }
+.lp-person-role { font-size: 11.5px; color: var(--lp-muted); }
+
+/* ---------------------------------------------------------- motivation
+   The third sidebar card: someone else's photo and words. Centred rather than
+   in a row like the people above, because the quote is the point of it and a
+   line of italics reads better under the face than beside it. */
+
+.lp-motivation { text-align: center; }
+.lp-motivation .lp-access-title { justify-content: center; }
+.lp-motivation-face { display: flex; justify-content: center; margin-bottom: 12px; }
+
+.lp-motivation .lp-avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 18px;
+  background: linear-gradient(135deg, #F59E0B, #DB2777);
+}
+
+.lp-motivation .lp-avatar.has-photo {
+  width: 84px;
+  height: 84px;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.5);
+}
+
+.lp-motivation-quote {
+  font-size: 12.5px !important;
+  font-style: italic;
+  line-height: 1.65 !important;
+  color: var(--lp-ink) !important;
+  margin: 0 0 10px !important;
+}
+
+.lp-motivation-quote::before { content: '\201C'; }
+.lp-motivation-quote::after { content: '\201D'; }
+
+.lp-motivation-by { padding-top: 10px; border-top: 1px solid var(--lp-line); }
+
+/* ---------------------------------------------------------------- main */
+
+.lp-main { display: flex; flex-direction: column; gap: 22px; min-width: 0; padding-bottom: 40px; }
+
+/* Named, because the scroll cue has to reach past it to the card's own edge. */
+.lp-section { --lp-section-pad: 30px; padding: var(--lp-section-pad) 34px; }
+
+.lp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7DD3FC;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  margin-bottom: 18px;
+}
+
+.lp-hero { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 28px; align-items: center; }
+
+.lp-hero h1 {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  margin: 0 0 6px;
+  background: linear-gradient(90deg, #38BDF8 0%, #818CF8 55%, #C084FC 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-hero h2 { font-size: 26px; font-weight: 700; letter-spacing: -0.6px; margin: 0 0 18px; }
+
+.lp-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 18px; }
+
+.lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px 8px 10px;
+  border-radius: 999px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lp-heading);
+}
+
+.lp-chip i { color: var(--lp-accent); }
+.lp-chip.is-purple i { color: var(--lp-accent2); }
+
+.lp-art { width: 100%; height: auto; display: block; max-width: 300px; margin: 0 auto; }
+.lp-hero .lp-art { max-width: 440px; }
+
+/* -------------------------------------------------------- section head */
+
+.lp-section-head { text-align: center; margin-bottom: 26px; }
+.lp-section-head h2 { font-size: 27px; font-weight: 800; letter-spacing: -0.7px; margin: 0 0 10px; }
+
+.lp-section-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 13.5px;
+  color: var(--lp-muted) !important;
+  margin: 0;
+}
+
+.lp-section-sub::before {
+  content: '';
+  width: 70px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--lp-accent));
+}
+
+/* ------------------------------------------------------------ timeline */
+
+.lp-timeline { position: relative; padding-left: 28px; display: flex; flex-direction: column; gap: 14px; }
+
+.lp-timeline::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 26px;
+  bottom: 26px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.5), rgba(168, 85, 247, 0.5));
+}
+
+.lp-step { position: relative; display: grid; grid-template-columns: 62px 1fr; gap: 18px; align-items: start;
+  background: var(--lp-panel-soft); border: 1px solid var(--lp-line); border-radius: 16px; padding: 18px 20px; }
+
+.lp-step::before {
+  content: '';
+  position: absolute;
+  left: -28px;
+  top: 30px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0B1226;
+  border: 3px solid var(--lp-accent);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.lp-step.is-purple::before { border-color: var(--lp-accent2); box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.14); }
+
+.lp-step-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7DD3FC;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+.lp-step-icon.tone-pink { background: rgba(236, 72, 153, 0.12); color: #F472B6; border-color: rgba(236, 72, 153, 0.22); }
+.lp-step-icon.tone-violet { background: rgba(139, 92, 246, 0.14); color: #C4B5FD; border-color: rgba(139, 92, 246, 0.24); }
+.lp-step-icon.tone-amber { background: rgba(245, 158, 11, 0.14); color: #FCD34D; border-color: rgba(245, 158, 11, 0.24); }
+
+.lp-step h3 { font-size: 16px; font-weight: 700; margin: 0 0 6px; color: var(--lp-accent) !important; }
+.lp-step.is-purple h3 { color: #C4B5FD !important; }
+.lp-step p { margin: 0; font-size: 14px; }
+
+/* --------------------------------------------------------------- quote */
+
+.lp-quote {
+  position: relative;
+  margin-top: 22px;
+  padding: 26px 60px;
+  text-align: center;
+  border-radius: 16px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+}
+
+.lp-quote p { font-size: 16px; font-style: italic; font-weight: 600; color: var(--lp-heading) !important; margin: 0; line-height: 1.6; }
+.lp-quote i { position: absolute; font-size: 22px; color: rgba(168, 85, 247, 0.55); }
+.lp-quote i.q-open { left: 24px; top: 24px; }
+.lp-quote i.q-close { right: 24px; bottom: 24px; }
+
+.lp-quote cite {
+  display: block;
+  margin-top: 14px;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lp-accent) !important;
+}
+
+/* ------------------------------------------------------------- creator */
+
+/* Portrait on the left, the writing beside it. This is the longest panel on
+   the page, so the left column is sticky: the face and the artwork stay with
+   the words the whole way down instead of scrolling off at the first
+   paragraph. */
+.lp-creator { display: grid; grid-template-columns: 258px 1fr; gap: 30px; align-items: start; }
+
+.lp-creator-side { position: sticky; top: var(--lp-top); }
+
+.lp-creator-card {
+  text-align: center;
+  padding: 26px 20px;
+  border-radius: 20px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+}
+
+/* Big enough to read as a portrait rather than an avatar; the .lp-avatar rules
+   already crop any shape of photo into the circle. */
+.lp-creator-card .lp-avatar {
+  width: 96px;
+  height: 96px;
+  font-size: 32px;
+  margin: 0 auto 16px;
+}
+
+.lp-creator-card .lp-avatar.has-photo {
+  width: 148px;
+  height: 148px;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.45), 0 18px 38px rgba(0, 0, 0, 0.35);
+}
+
+.lp-creator-card h3 { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; margin: 0 0 4px; }
+.lp-creator-role { font-size: 12.5px; color: var(--lp-muted) !important; margin: 0 !important; line-height: 1.5; }
+
+.lp-creator-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--lp-line);
+  background: rgba(236, 72, 153, 0.14);
+  color: var(--lp-heading);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.lp-creator-link i { color: #F472B6; font-size: 14px; }
+.lp-creator-link:hover { transform: translateY(-2px); border-color: rgba(236, 72, 153, 0.5); color: var(--lp-heading); }
+
+/* The scenes are stacked on top of each other and only one is lit at a time,
+   so the box keeps one fixed height however they change - the writing beside
+   it must never shift because the artwork did. */
+.lp-creator-art {
+  position: relative;
+  height: 210px;
+  margin-top: 20px;
+}
+
+.lp-creator-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  transition: opacity 700ms cubic-bezier(0.22, 0.85, 0.3, 1),
+              transform 700ms cubic-bezier(0.22, 0.85, 0.3, 1);
+  pointer-events: none;
+}
+
+.lp-creator-scene.is-on { opacity: 1; transform: none; }
+
+/* The hinge between the working life and the person: given a line of its own
+   so the reader feels the story turn. */
+.lp-creator-pivot {
+  margin: 22px 0 !important;
+  padding: 14px 0;
+  border-top: 1px solid var(--lp-line);
+  border-bottom: 1px solid var(--lp-line);
+  font-size: 16px !important;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--lp-heading) !important;
+  text-align: center;
+}
+
+/* The first-person passage. Tinted and titled so the change of voice looks
+   intended - the man stepping forward to speak for himself, rather than a
+   paragraph that forgot which person it was written in. */
+.lp-creator-note {
+  margin-top: 24px;
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid var(--lp-line);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.09), rgba(168, 85, 247, 0.08));
+}
+
+.lp-creator-note-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lp-accent) !important;
+}
+
+.lp-creator-note p:last-child { margin-bottom: 0; }
+
+.lp-creator-closing {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+  border-left: 3px solid var(--lp-accent2);
+}
+
+.lp-creator-closing p:last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------- support */
+
+.lp-support { display: grid; grid-template-columns: 0.8fr 1.4fr 0.8fr; gap: 26px; align-items: center; }
+
+.lp-support-card {
+  text-align: center;
+  padding: 22px 18px;
+  border-radius: 18px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+}
+
+.lp-support-card .lp-avatar { width: 54px; height: 54px; font-size: 19px; margin: 0 auto 12px; }
+
+/* Large enough to recognise the face from the page itself, rather than only
+   once the lightbox is open. */
+.lp-support-card .lp-avatar.has-photo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.4), 0 14px 30px rgba(0, 0, 0, 0.3);
+}
+
+.lp-support-card h4 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+.lp-support-card p { font-size: 12.5px; color: var(--lp-muted) !important; font-style: italic; margin: 0; line-height: 1.6; }
+
+/* -------------------------------------------------------------- values */
+
+.lp-values { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+.lp-value {
+  text-align: center;
+  padding: 22px 16px;
+  border-radius: 16px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.lp-value:hover { transform: translateY(-4px); border-color: rgba(56, 189, 248, 0.35); }
+.lp-value i { font-size: 24px; margin-bottom: 12px; display: block; }
+.lp-value h4 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+.lp-value p { font-size: 12px; color: var(--lp-muted) !important; margin: 0; line-height: 1.55; }
+
+/* ------------------------------------------------------------ thankyou */
+
+.lp-thanks { display: grid; grid-template-columns: 0.7fr 1.3fr 1fr; gap: 26px; align-items: center; }
+
+.lp-contact {
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--lp-panel-soft);
+  border: 1px solid var(--lp-line);
+}
+
+.lp-contact p { font-size: 13px; margin-bottom: 8px; }
+.lp-contact hr { border: none; border-top: 1px solid var(--lp-line); margin: 14px 0; }
+
+.lp-contact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--lp-accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13.5px;
+  word-break: break-all;
+}
+
+.lp-contact a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------ elements */
+
+/* Theme toggle and the way in, at the foot of the sidebar rail. Both wear the
+   same glass as the panels above them; only the fill tells them apart. */
+.lp-side-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+.lp-side-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  height: 46px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: 1px solid var(--lp-line);
+  background: var(--lp-panel);
+  backdrop-filter: var(--glass-blur, blur(16px) saturate(150%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(16px) saturate(150%));
+  /* Not the panels' glass shadow: blurred by 40 and dropped 18, it spreads far
+     wider than a 46px button and reads as a dark cloud sitting behind these
+     two rather than as any kind of lift. Scaled to the control instead. */
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.55);
+  color: var(--lp-ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.lp-side-btn i { font-size: 15px; }
+.lp-side-btn:hover { transform: translateY(-2px); color: var(--lp-heading); border-color: rgba(125, 211, 252, 0.4); }
+.lp-side-btn:focus-visible { outline: 2px solid var(--lp-accent); outline-offset: 2px; }
+
+/* The toggle is a square; Login takes whatever is left of the row. */
+.lp-side-btn.is-icon { width: 46px; padding: 0; flex: 0 0 46px; }
+.lp-side-btn.is-icon i { color: #FCD34D; }
+/* Amber on a pale panel needs to come down a few steps to stay legible. */
+[data-theme="light"] .lp-side-btn.is-icon i { color: #D97706; }
+
+.lp-side-btn.is-primary {
+  flex: 1;
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+  /* Tinted rather than black, so the lift comes from the button's own colour. */
+  box-shadow: 0 8px 18px -9px rgba(99, 102, 241, 0.9);
+}
+
+.lp-side-btn.is-primary:hover { color: #fff; border-color: transparent; }
+
+/* Preview-only bar (Settings -> Landing Page -> Preview) */
+.pl-preview-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(17, 24, 51, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.pl-preview-back { color: #7DD3FC; text-decoration: none; font-weight: 700; white-space: nowrap; }
+
+/* Flash toasts would land on the hero here (no header to sit under) */
+.flash-toasts { top: auto !important; bottom: 78px; }
+
+/* the page owns the viewport: the app header/footer are skipped for it */
+.main-content {
+  margin-top: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.main-content .container-fluid { max-width: none; padding-left: 0; padding-right: 0; }
+
+/* --------------------------------------------------------- focus mode
+   Only the section being read stays sharp; the one before and the one after
+   fade back so the story arrives a beat at a time. Dimmed sections keep their
+   space in the flow - removing them outright would make the page jump under
+   the reader. The .lp-focus class is added by the page script, so without
+   JavaScript (or with reduced motion) everything simply stays visible. */
+
+.lp-main .lp-section {
+  transition: opacity 620ms cubic-bezier(0.22, 0.85, 0.3, 1),
+              filter 620ms cubic-bezier(0.22, 0.85, 0.3, 1),
+              transform 620ms cubic-bezier(0.22, 0.85, 0.3, 1),
+              box-shadow 620ms ease;
+}
+
+/* The document is the scroller, so the snap rule has to live on <html>. The
+   page script adds this class, which also keeps the effect off without JS. */
+html.lp-snap { scroll-snap-type: y proximity; }
+
+/* Each panel settles with its top edge level with the top of the sidebar, so
+   the two columns always start on the same line. */
+.lp-focus .lp-section { scroll-snap-align: center; }
+
+/* A panel with more in it than the window can hold is framed to the window and
+   read inside itself. The border and its rounded corners belong to the box that
+   stays put, so the card is whole on screen the whole way down instead of
+   running off both edges as a slab - and because nothing overhangs any more,
+   every panel lands the same way when it is jumped to.
+
+   Scrolling past the end of one hands straight on to the page, which is the
+   browser's own behaviour: overscroll-behavior is deliberately left alone. */
+.lp-focus .lp-section.is-tall {
+  max-height: calc(100vh - var(--lp-top) * 2);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+.lp-focus .lp-section.is-tall::-webkit-scrollbar { width: 9px; }
+.lp-focus .lp-section.is-tall::-webkit-scrollbar-track { background: transparent; }
+
+.lp-focus .lp-section.is-tall::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+.lp-focus .lp-section.is-tall::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.6); background-clip: content-box; }
+
+/* The panel is its own scroller now, so the column inside it rides that rather
+   than the window - same rule, different frame of reference. */
+.lp-focus .lp-section.is-tall .lp-creator-side { top: 0; }
+
+/* "There is more below." Sticky rather than absolute, because absolute inside
+   a scroller is positioned against the content and would scroll away with it.
+   The negative margin means it hangs over the last stretch of the writing
+   instead of taking a strip of the panel for itself. */
+/* A sticky box cannot be pushed outside the content it sits in, so a framed
+   panel gives up its bottom padding and the cue carries that space itself
+   (height 124 against a -94 pull leaves exactly the 30 the padding held). That
+   is what lets the fade own the whole bottom edge of the card - full width
+   through the side padding, right down to the border - with no strip of
+   unfaded writing left under it and no hard edges at its sides. */
+.lp-focus .lp-section.is-tall { padding-bottom: 0; }
+
+.lp-scroll-cue {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  height: 124px;
+  margin-top: -94px;
+  margin-left: -34px;
+  margin-right: -34px;
+  padding-bottom: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  /* The writing dissolves into the card under the arrow rather than being cut
+     off by it, so the arrow reads as belonging there. */
+  background: linear-gradient(to bottom,
+    rgba(var(--lp-scrim), 0) 0%,
+    rgba(var(--lp-scrim), 0.55) 52%,
+    rgba(var(--lp-scrim), 0.93) 100%);
+}
+
+.lp-scroll-cue.is-on { opacity: 1; }
+
+.lp-scroll-cue-btn {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #fff;
+  font-size: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+  /* Tinted and pulled in, like the sidebar controls - a wide black blur under a
+     40px button reads as a smudge rather than as lift. */
+  box-shadow: 0 8px 18px -7px rgba(79, 108, 240, 0.9);
+  animation: lp-cue-nudge 1.9s ease-in-out infinite;
+}
+
+.lp-scroll-cue-btn:hover { animation: none; transform: translateY(2px); }
+.lp-scroll-cue-btn:focus-visible { outline: 2px solid var(--lp-accent); outline-offset: 3px; }
+
+@keyframes lp-cue-nudge {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-scroll-cue-btn { animation: none; }
+}
+
+/* Room either side so the first and last panels can reach the middle like the
+   rest. The page script sizes both exactly; these are the fallbacks. */
+.lp-focus .lp-main { padding-top: 20vh; padding-bottom: 40vh; }
+
+/* The panel in focus hangs in the air; the others drift away from it - the one
+   above lifts out of frame, the one below sinks - so the story reads as a
+   single card floating through. */
+/* Every shadow in this column is drawn with a negative spread, so it falls
+   under the card rather than out to the sides. The gap to the sidebar is only
+   22px and a shadow blurred by 90 reaches about twice that: it filled the gap
+   end to end and read as a dark stripe running down beside the rail instead of
+   as depth under the panel. Pulling the spread in keeps the lift and leaves the
+   gap clean. */
+.lp-main .lp-section { box-shadow: 0 16px 34px -18px rgba(0, 0, 0, 0.45); }
+[data-theme="light"] .lp-main .lp-section { box-shadow: 0 16px 34px -18px rgba(15, 23, 42, 0.16); }
+
+.lp-focus .lp-main .lp-section:not(.is-dim) {
+  box-shadow: 0 40px 80px -36px rgba(0, 0, 0, 0.62), 0 14px 30px -16px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] .lp-focus .lp-main .lp-section:not(.is-dim) {
+  box-shadow: 0 34px 66px -32px rgba(15, 23, 42, 0.3), 0 12px 26px -14px rgba(15, 23, 42, 0.16);
+}
+
+.lp-focus .lp-main .lp-section.is-dim {
+  opacity: 0.07;
+  filter: blur(6px);
+  transform: translateY(28px) scale(0.94);
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.lp-focus .lp-main .lp-section.is-dim.is-above { transform: translateY(-28px) scale(0.94); }
+
+/* --------------------------------------------------------- login modal
+   This file is only loaded on the signed-out page, so these rules affect the
+   login modal alone. Signing in gets the screen to itself: a solid curtain
+   rather than a blur, so nothing of the story shows through behind the card.
+   Nothing to blur once it is opaque, so the backdrop filter comes off too. */
+
+.modal-backdrop.show {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-color: #070B1A;
+  opacity: 1;
+}
+
+[data-theme="light"] .modal-backdrop.show { background-color: #EDF1F8; }
+
+/* The cursor glow rides above everything, so it comes off while the form is up. */
+body.modal-open #cursor-glow.is-visible {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Solid card: while it fades in its opacity is below 1, and a see-through
+   panel let the headline behind read straight through the form. */
+#loginModal .modern-login-modal { background: rgb(var(--glass-tint, 20, 28, 58)); }
+
+/* Focus mode stands down while the modal is open - the page behind should be
+   the story, not four blurred-out blanks. */
+.lp-focus.is-paused .lp-main .lp-section.is-dim,
+.lp-focus.is-paused .lp-main .lp-section.is-dim.is-above {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+/* ------------------------------------------------------ photo lightbox */
+
+.lp-avatar.has-photo { cursor: zoom-in; }
+
+.lp-avatar.has-photo:focus-visible {
+  outline: 2px solid var(--lp-accent, #55B8FF);
+  outline-offset: 3px;
+}
+
+body.lp-photo-open { overflow: hidden; }
+
+.lp-photo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 10, 26, 0.55);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  opacity: 0;
+  /* Shown instantly, hidden only once the fade has finished - transitioning
+     visibility itself would delay the open by the length of the fade. */
+  visibility: hidden;
+  transition: opacity 260ms ease, visibility 0s linear 260ms;
+}
+
+[data-theme="light"] .lp-photo-modal { background: rgba(226, 232, 240, 0.62); }
+
+.lp-photo-modal.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 260ms ease, visibility 0s linear 0s;
+}
+
+.lp-photo-inner {
+  text-align: center;
+  transform: scale(0.86);
+  transition: transform 340ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+.lp-photo-modal.is-open .lp-photo-inner { transform: scale(1); }
+
+.lp-photo-frame {
+  position: relative;
+  width: min(62vmin, 400px);
+  height: min(62vmin, 400px);
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55),
+              0 0 0 3px rgba(168, 85, 247, 0.6),
+              0 0 0 14px rgba(168, 85, 247, 0.12);
+}
+
+.lp-photo-frame img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.lp-photo-name { font-size: 20px; font-weight: 700; color: #fff; }
+.lp-photo-role { font-size: 13.5px; color: #B6C0DE; margin-top: 4px; }
+[data-theme="light"] .lp-photo-name { color: #0F172A; }
+[data-theme="light"] .lp-photo-role { color: #475569; }
+
+.lp-photo-close {
+  position: absolute;
+  top: 22px;
+  right: 26px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.lp-photo-close:hover { background: rgba(255, 255, 255, 0.2); transform: rotate(90deg); }
+[data-theme="light"] .lp-photo-close { background: rgba(15, 23, 42, 0.08); border-color: rgba(15, 23, 42, 0.15); color: #0F172A; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-main .lp-section { transition: none; }
+  .lp-focus .lp-main .lp-section.is-dim,
+  .lp-focus .lp-main .lp-section.is-dim.is-above {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    pointer-events: auto;
+  }
+  .lp-photo-modal, .lp-photo-inner { transition: none; }
+  /* The scene no longer changes with the scroll, so the first one is simply
+     drawn where it is. */
+  .lp-creator-scene { transition: none; }
+}
+
+/* ---------------------------------------------------------- responsive */
+
+@media (max-width: 1200px) {
+  .lp { grid-template-columns: 260px 1fr; }
+  .lp-hero { grid-template-columns: 1fr; }
+  .lp-support, .lp-thanks { grid-template-columns: 1fr; }
+  .lp-values { grid-template-columns: repeat(2, 1fr); }
+
+  /* One column: the card becomes a header above the writing, so there is
+     nothing beside it to stay level with and sticky comes off. The artwork
+     went there to fill a column that no longer exists, so it goes too. */
+  .lp-creator { grid-template-columns: 1fr; gap: 22px; }
+  .lp-creator-side { position: static; }
+  .lp-creator-art { display: none; }
+}
+
+@media (max-width: 900px) {
+  .lp { grid-template-columns: 1fr; padding: 16px 14px 32px; --lp-top: 16px; }
+  /* The sidebar sits above the story rather than beside it here, and panels are
+     taller than a phone screen, so there is nothing to line them up with. */
+  .lp-side { align-self: auto; }
+  .lp-side-sticky {
+    position: static;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+  }
+  .lp-focus .lp-main { padding-top: 0; padding-bottom: 12vh; }
+  /* One column and a phone-sized screen: a panel within a panel to scroll is
+     more trouble than it is worth, so tall panels simply run long here. */
+  .lp-focus .lp-section.is-tall { max-height: none; overflow: visible; }
+  .lp-section { padding: 24px 20px; }
+  .lp-hero h1 { font-size: 32px; }
+  .lp-quote { padding: 22px 26px; }
+  .lp-quote i { display: none; }
+  .lp-creator-card { padding: 20px 16px; }
+  .lp-creator-card .lp-avatar.has-photo { width: 112px; height: 112px; }
+  .lp-creator-pivot { font-size: 15px !important; }
+  .lp-creator-closing, .lp-creator-note { padding: 16px; }
+}
+
+@media (max-width: 600px) {
+  .lp-values { grid-template-columns: 1fr; }
+  .lp-step { grid-template-columns: 1fr; }
+  .lp-timeline { padding-left: 20px; }
+
+  /* The admin preview banner: a pill this wide would wrap into a blob on a
+     phone, so it becomes a full-width bar along the bottom. */
+  .pl-preview-bar {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    justify-content: space-between;
+    gap: 10px;
+    border-radius: 14px;
+    font-size: 12px;
+    padding: 10px 14px;
+  }
+}

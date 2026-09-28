@@ -1,0 +1,639 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Dashboard - {{ site_settings.app_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-shell.css') }}?v=6">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{# The dashboard renders its own sidebar/topbar: base skips the app header and
+   footer for this page (hide_app_chrome). #}
+<script>document.body.classList.add('dashboard-shell');</script>
+
+{% set role_label = (session.role or 'user')|replace('subsuperadmin', 'Sub-Superadmin')|title %}
+{% set display_name = session.first_name or (session.user_id.split('@')[0] if session.user_id else 'there') %}
+{% set can_admin = session.role in ['admin', 'superadmin', 'subsuperadmin'] %}
+{% set is_super = session.role == 'superadmin' %}
+
+<div class="ds">
+    <!-- ============================ SIDEBAR ============================ -->
+    <aside class="ds-sidebar">
+        <a href="{{ url_for('index') }}" class="ds-brand">
+            {% if site_settings.brand_mode == 'image' and site_settings.brand_logo %}
+            <img src="{{ url_for('static', filename=site_settings.brand_logo) }}" alt="{{ site_settings.app_name }}" class="ds-brand-logo">
+            {% else %}
+            <svg width="30" height="30" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="dsBrandGradient" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                        <stop offset="0" stop-color="#2DD4FF"></stop>
+                        <stop offset="0.5" stop-color="#A855F7"></stop>
+                        <stop offset="1" stop-color="#EC4899"></stop>
+                    </linearGradient>
+                </defs>
+                <path d="M18 4 L30 30 L22 30 L18 20 L14 30 L6 30 Z" fill="url(#dsBrandGradient)"></path>
+                <circle cx="27" cy="9" r="3.2" fill="url(#dsBrandGradient)"></circle>
+            </svg>
+            <div>
+                <div class="ds-brand-name">{{ site_settings.app_name }}</div>
+                <p class="ds-brand-tag">{{ site_settings.app_tagline }}</p>
+            </div>
+            {% endif %}
+        </a>
+
+        <a href="{{ url_for('dashboard') }}" class="ds-nav-item is-active">
+            <i class="fas fa-home"></i>Dashboard
+        </a>
+
+        <div class="ds-nav-label">Tools</div>
+        <a href="{{ url_for('index') }}?tool=attendance-generator&amp;from=dashboard" class="ds-nav-item"><i class="fas fa-calendar-check"></i>{{ app_names.app1 if app_names else 'Attendance Generator' }}</a>
+        <a href="{{ url_for('index') }}?tool=smart-matcher&amp;from=dashboard" class="ds-nav-item"><i class="fas fa-exchange-alt"></i>{{ app_names.app2 if app_names else 'Smart Matcher' }}</a>
+        <a href="{{ url_for('summary_tool') }}" class="ds-nav-item"><i class="fas fa-list-check"></i>Meeting Summary</a>
+
+        <div class="ds-nav-label">Management</div>
+        {% if can_admin %}
+        <a href="#ds-users" class="ds-nav-item"><i class="fas fa-users"></i>Users</a>
+        {% endif %}
+        {# Same rule as batch_manager_required: superadmin always, everyone else
+           only with the permission. #}
+        {% if is_super or user_perms.can_manage_batches %}
+        <a href="{{ url_for('manage_batches') }}" class="ds-nav-item"><i class="fas fa-layer-group"></i>Batches</a>
+        {% endif %}
+        <a href="{{ url_for('processed_files_management') }}" class="ds-nav-item"><i class="fas fa-folder"></i>Files</a>
+        {% if can_admin %}
+        <a href="{{ url_for('file_processing_stats') }}" class="ds-nav-item"><i class="fas fa-chart-bar"></i>Statistics</a>
+        {% endif %}
+
+        <div class="ds-nav-label">System</div>
+        {% if is_super %}
+        <a href="{{ url_for('settings_management') }}" class="ds-nav-item"><i class="fas fa-cog"></i>Settings</a>
+        <a href="#ds-backup" class="ds-nav-item"><i class="fas fa-database"></i>Backup &amp; Restore</a>
+        <a href="{{ url_for('view_hidden_users') }}" class="ds-nav-item"><i class="fas fa-eye-slash"></i>Hidden Users</a>
+        {% endif %}
+        {% if can_admin %}
+        <a href="{{ url_for('activity_logs') if is_super else url_for('dashboard') }}" class="ds-nav-item"><i class="fas fa-history"></i>Activity Logs</a>
+        {% endif %}
+
+        <div class="ds-help">
+            <div class="ds-help-title"><i class="fas fa-question-circle"></i>Need Help?</div>
+            <p>Check the tool guides on the home page, or contact support.</p>
+            <a href="mailto:{{ site_settings.footer_email }}" class="ds-help-btn">
+                <i class="fas fa-envelope"></i>Contact Support
+            </a>
+        </div>
+
+        <div class="ds-nav-sep"></div>
+        <a href="{{ url_for('logout') }}" class="ds-logout"><i class="fas fa-sign-out-alt"></i>Logout</a>
+    </aside>
+
+    <!-- ============================== MAIN ============================= -->
+    <main class="ds-main">
+        <div class="ds-topbar">
+            <div class="ds-greeting">
+                <h1>Welcome back, {{ display_name|title }} <span aria-hidden="true">&#128075;</span></h1>
+                <p>Here's what's happening with your system today.</p>
+            </div>
+
+            <div class="ds-topbar-actions">
+                <div class="ds-search">
+                    <i class="fas fa-search ds-search-icon"></i>
+                    <input type="text" id="dsSearchInput" placeholder="Search anything..." autocomplete="off"
+                           aria-label="Search users, batches and files">
+                    <span class="ds-kbd" id="dsSearchHint">&#8984; K</span>
+                    <div class="ds-search-panel" id="dsSearchPanel"></div>
+                </div>
+
+                <button type="button" class="ds-icon-btn" id="dsThemeToggle" title="Toggle theme" aria-label="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+
+                <div class="dropdown">
+                    <div class="ds-user" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                        <span class="ds-avatar">{{ display_name[:1]|upper }}</span>
+                        <div>
+                            <div class="ds-user-name">{{ display_name|title }}</div>
+                            <div class="ds-user-role">{{ role_label }}</div>
+                        </div>
+                        <i class="fas fa-chevron-down" style="font-size: 11px; opacity: 0.7;"></i>
+                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li class="dropdown-header"><small>Signed in as</small><br><strong>{{ session.user_id }}</strong></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('index') }}"><i class="fas fa-home"></i>Home</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal"><i class="fas fa-key"></i>Change Password</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="ds-row-end">
+            <span class="ds-datepill"><i class="fas fa-calendar-alt" style="opacity:.7"></i>{{ today_label }}</span>
+        </div>
+
+        <!-- ---------------------------- stat cards --------------------- -->
+        {% macro spark(series, color) -%}
+            {% set points = series or [0, 0, 0, 0, 0, 0, 0] %}
+            {% set top = points|max %}
+            <svg class="ds-spark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true">
+                <polyline fill="none" stroke="{{ color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          points="{% for p in points %}{{ loop.index0 * (84 / ((points|length - 1) or 1)) }},{{ 26 - (p / (top or 1) * 22) }} {% endfor %}"></polyline>
+            </svg>
+        {%- endmacro %}
+
+        {% macro trend(value, suffix) -%}
+            {% if value > 0 %}
+            <span class="ds-trend up"><i class="fas fa-arrow-up"></i> {{ value }}{{ suffix }}</span>
+            {% elif value < 0 %}
+            <span class="ds-trend down"><i class="fas fa-arrow-down"></i> {{ value|abs }}{{ suffix }}</span>
+            {% else %}
+            <span class="ds-trend flat">No change{{ suffix|replace('%', '') }}</span>
+            {% endif %}
+        {%- endmacro %}
+
+        {# A regular user has no user base to count, so their row is three cards
+           wide rather than showing a "Total Users: 1" tile. #}
+        <div class="ds-stats {{ '' if can_admin else 'ds-stats-3' }}">
+            <div class="ds-card ds-stat">
+                <div class="ds-stat-icon tone-purple"><i class="fas fa-clock"></i></div>
+                <div>
+                    <div class="ds-stat-value">{{ stats.total_time_saved_hours or 0 }}</div>
+                    <div class="ds-stat-label">Hours Saved</div>
+                </div>
+                <div class="ds-stat-foot">
+                    {{ trend(trends.hours_pct, '% this month') }}
+                    {{ spark(trends.hours_series, '#A78BFA') }}
+                </div>
+            </div>
+
+            <div class="ds-card ds-stat">
+                <div class="ds-stat-icon tone-green"><i class="fas fa-file-alt"></i></div>
+                <div>
+                    <div class="ds-stat-value">{{ stats.total_files_processed or 0 }}</div>
+                    <div class="ds-stat-label">Files Processed</div>
+                </div>
+                <div class="ds-stat-foot">
+                    {{ trend(trends.files_pct, '% this month') }}
+                    {{ spark(trends.files_series, '#4ADE80') }}
+                </div>
+            </div>
+
+            {% if can_admin %}
+            <div class="ds-card ds-stat">
+                <div class="ds-stat-icon tone-blue"><i class="fas fa-users"></i></div>
+                <div>
+                    <div class="ds-stat-value">{{ stats.activity.total_users if is_superadmin else (users|length or 1) }}</div>
+                    <div class="ds-stat-label">Total Users</div>
+                </div>
+                <div class="ds-stat-foot">
+                    <span class="ds-trend {{ 'up' if trends.new_users_this_month else 'flat' }}">
+                        {% if trends.new_users_this_month %}<i class="fas fa-arrow-up"></i> {{ trends.new_users_this_month }} new this month{% else %}No new users this month{% endif %}
+                    </span>
+                    {{ spark(trends.users_series, '#60A5FA') }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="ds-card ds-stat">
+                <div class="ds-stat-icon tone-amber"><i class="fas fa-sign-in-alt"></i></div>
+                <div>
+                    {# admins see every login; a regular user sees their own #}
+                    <div class="ds-stat-value">{{ stats.activity.total_logins or stats.activity.login_count or 0 }}</div>
+                    <div class="ds-stat-label">Total Logins</div>
+                </div>
+                <div class="ds-stat-foot">
+                    <span class="ds-trend {{ 'up' if trends.logins_today else 'flat' }}">
+                        {% if trends.logins_today %}<i class="fas fa-arrow-up"></i> {{ trends.logins_today }} today{% else %}None today{% endif %}
+                    </span>
+                    {{ spark(trends.logins_series, '#FBBF24') }}
+                </div>
+            </div>
+        </div>
+
+        <!-- --------------------- processing breakdown ------------------- -->
+        <div class="ds-card ds-breakdown">
+            <div class="ds-card-head" style="margin-bottom: 4px;">
+                <div>
+                    <h2 class="ds-card-title">Processing Breakdown</h2>
+                    <p class="ds-card-sub">Files handled by each tool</p>
+                </div>
+                {% if can_admin %}<a href="{{ url_for('file_processing_stats') }}" class="ds-link">Full statistics</a>{% endif %}
+            </div>
+            <div class="ds-breakdown-grid">
+                <div class="ds-breakdown-item">
+                    <span class="ds-activity-icon tone-blue"><i class="fas fa-calendar-check"></i></span>
+                    <div>
+                        <div class="ds-breakdown-value">{{ stats.breakdown.attendance if stats.breakdown else 0 }}</div>
+                        <div class="ds-breakdown-label">{{ app_names.app1 if app_names else 'Attendance Generator' }}</div>
+                    </div>
+                </div>
+                <div class="ds-breakdown-item">
+                    <span class="ds-activity-icon tone-green"><i class="fas fa-exchange-alt"></i></span>
+                    <div>
+                        <div class="ds-breakdown-value">{{ stats.breakdown.matching if stats.breakdown else 0 }}</div>
+                        <div class="ds-breakdown-label">{{ app_names.app2 if app_names else 'Smart Matcher' }}</div>
+                    </div>
+                </div>
+                <div class="ds-breakdown-item">
+                    <span class="ds-activity-icon tone-amber"><i class="fas fa-file-export"></i></span>
+                    <div>
+                        <div class="ds-breakdown-value">{{ stats.breakdown.final_excel if stats.breakdown else 0 }}</div>
+                        <div class="ds-breakdown-label">{{ app_names.app3 if app_names else 'Final Excel Generator' }}</div>
+                    </div>
+                </div>
+                {# Raw Excel Generator is part of the Smart Matcher flow, so it
+                   gets no tile of its own. Its files still count towards the
+                   Files Processed total. #}
+            </div>
+        </div>
+
+        <!-- ------------------ continue working + activity --------------- -->
+        {# Recent Activity is an admin concern - a regular user cannot act on it,
+           so their tools card takes the full width instead of sitting next to
+           a panel they have no use for. #}
+        <div class="{{ 'ds-grid-2' if can_admin else 'ds-grid-1' }}">
+            <div class="ds-card">
+                <div class="ds-card-head">
+                    <div>
+                        <h2 class="ds-card-title">Continue Working</h2>
+                        <p class="ds-card-sub">Quickly resume your most used tools</p>
+                    </div>
+                </div>
+                <div class="ds-tools ds-tools-4">
+                    <div class="ds-tool">
+                        <div class="ds-tool-icon tone-blue"><i class="fas fa-calendar-check"></i></div>
+                        <div class="ds-tool-name">{{ app_names.app1 if app_names else 'Attendance Generator' }}</div>
+                        <div class="ds-tool-meta">Last used</div>
+                        <div class="ds-tool-when">{{ tool_last_used.attendance_label or 'Never' }}</div>
+                        <a href="{{ url_for('index') }}?tool=attendance-generator&amp;from=dashboard" class="ds-tool-btn">Continue <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                    <div class="ds-tool t-green">
+                        <div class="ds-tool-icon tone-green"><i class="fas fa-exchange-alt"></i></div>
+                        <div class="ds-tool-name">{{ app_names.app2 if app_names else 'Smart Matcher' }}</div>
+                        <div class="ds-tool-meta">Last used</div>
+                        <div class="ds-tool-when">{{ tool_last_used.matching_label or 'Never' }}</div>
+                        <a href="{{ url_for('index') }}?tool=smart-matcher&amp;from=dashboard" class="ds-tool-btn">Continue <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                    <div class="ds-tool t-amber">
+                        <div class="ds-tool-icon tone-amber"><i class="fas fa-file-export"></i></div>
+                        <div class="ds-tool-name">{{ app_names.app3 if app_names else 'Final Excel Generator' }}</div>
+                        <div class="ds-tool-meta">Last export</div>
+                        <div class="ds-tool-when">{{ tool_last_used.final_excel_label or 'Never' }}</div>
+                        <a href="{{ url_for('index') }}?tool=final-excel-generator&amp;from=dashboard" class="ds-tool-btn">Create New <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                    <div class="ds-tool t-purple">
+                        <div class="ds-tool-icon tone-purple"><i class="fas fa-list-check"></i></div>
+                        <div class="ds-tool-name">Meeting Summary</div>
+                        <div class="ds-tool-meta">Bulk</div>
+                        <div class="ds-tool-when">Subject, ID, end time, headcount</div>
+                        <a href="{{ url_for('summary_tool') }}" class="ds-tool-btn">Summarise <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            {% if can_admin %}
+            <div class="ds-card">
+                <div class="ds-card-head">
+                    <h2 class="ds-card-title">Recent Activity</h2>
+                    {% if is_super %}<a href="{{ url_for('activity_logs') }}" class="ds-link">View all</a>{% endif %}
+                </div>
+                {% if recent_activity %}
+                <div class="ds-activity-wrap">
+                <div class="ds-activity">
+                    {% for item in recent_activity %}
+                    <div class="ds-activity-item">
+                        <span class="ds-activity-icon tone-{{ item.tone }}"><i class="fas {{ item.icon }}"></i></span>
+                        <div>
+                            <div class="ds-activity-title">{{ item.title }}</div>
+                            <div class="ds-activity-detail">{{ item.detail }}</div>
+                        </div>
+                        <span class="ds-activity-time">{{ item.time }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                </div>
+                {% else %}
+                <div class="ds-empty"><i class="fas fa-wave-square"></i>No activity recorded yet</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ------------ recent files + health + user preview ------------- -->
+        {# Without the User Management card the third column would sit empty. #}
+        <div class="{{ 'ds-grid-3' if can_admin else 'ds-grid-2-even' }}">
+            <div class="ds-card">
+                <div class="ds-card-head">
+                    <h2 class="ds-card-title">Recent Files</h2>
+                    <a href="{{ url_for('processed_files_management') }}" class="ds-link">View all</a>
+                </div>
+                {% if recent_files %}
+                <div class="ds-scroll">
+                {% for file in recent_files %}
+                <div class="ds-file">
+                    <span class="ds-activity-icon tone-{{ 'slate' if file.missing else 'green' }}"><i class="fas fa-file-alt"></i></span>
+                    <div>
+                        <div class="ds-file-name">{{ file.name }}</div>
+                        <div class="ds-file-tool">{{ file.tool }}</div>
+                    </div>
+                    <div class="ds-file-meta">{{ file.size }}<br>{{ file.time }}</div>
+                </div>
+                {% endfor %}
+                </div>
+                {% else %}
+                <div class="ds-empty"><i class="fas fa-folder-open"></i>No files generated yet</div>
+                {% endif %}
+            </div>
+
+            <div class="ds-card">
+                <div class="ds-card-head">
+                    <h2 class="ds-card-title">System Health</h2>
+                </div>
+                <div class="ds-health">
+                    {% for row in health %}
+                    <div class="ds-health-row">
+                        <span class="ds-activity-icon tone-{{ row.tone }}"><i class="fas {{ row.icon }}"></i></span>
+                        <div>
+                            <div class="ds-health-label">{{ row.label }}</div>
+                            <div class="ds-health-detail">{{ row.detail }}</div>
+                        </div>
+                        <span class="ds-health-value">{{ row.value }}</span>
+                        <i class="fas {{ 'fa-check-circle ds-health-dot ok' if row.ok else 'fa-exclamation-circle ds-health-dot bad' }}"></i>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if can_admin %}
+            <div class="ds-card" id="ds-users">
+                <div class="ds-card-head">
+                    <div>
+                        <h2 class="ds-card-title">User Management</h2>
+                        <p class="ds-card-sub">{{ users|length }} account(s) you can manage</p>
+                    </div>
+                    <a href="#ds-all-users" class="ds-link" id="dsManageUsersLink">Manage all</a>
+                </div>
+                {% if users %}
+                <table class="ds-table">
+                    <thead>
+                        <tr><th>User</th><th>Role</th><th>Expires</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users[:4] %}
+                        <tr>
+                            <td>
+                                <div class="ds-user-cell">
+                                    <span class="ds-avatar">{{ user.email[:1]|upper }}</span>
+                                    <span class="ds-user-email">{{ user.email }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="ds-badge {{ 'badge-super' if user.role == 'superadmin' else ('badge-admin' if user.role in ['admin', 'subsuperadmin'] else 'badge-user') }}">
+                                    {{ user.role|replace('subsuperadmin', 'Sub-Super')|title }}
+                                </span>
+                            </td>
+                            <td>{{ user.expires_at.strftime('%b %d, %Y') if user.expires_at else 'Never' }}</td>
+                            <td>
+                                {% set expired = user.expires_at and user.expires_at < now %}
+                                <span class="ds-badge {{ 'badge-expired' if expired else 'badge-active' }}">{{ 'Expired' if expired else 'Active' }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="ds-card-head" style="margin: 14px 0 0; justify-content: flex-end;">
+                    <a href="#ds-all-users" class="ds-btn" id="dsManageUsersBtn">Manage All Users <i class="fas fa-arrow-right"></i></a>
+                </div>
+                {% else %}
+                <div class="ds-empty">
+                    <i class="fas fa-users"></i>No users yet
+                    <div class="mt-2"><a href="{{ url_for('create_user_route') }}" class="ds-btn">Create user</a></div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if can_admin %}
+        <!-- --------------------- full user management ------------------- -->
+        <div class="ds-card" id="ds-all-users" style="margin-bottom: var(--ds-gap); display: none;">
+            <div class="ds-card-head">
+                <div>
+                    <h2 class="ds-card-title">All Users</h2>
+                    <p class="ds-card-sub">Edit, hide or remove accounts</p>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <a href="{{ url_for('create_user_route') }}" class="ds-btn"><i class="fas fa-user-plus"></i>Create User</a>
+                    <button type="button" class="ds-btn" id="dsHideAllUsers"><i class="fas fa-times"></i>Close</button>
+                </div>
+            </div>
+
+            <input type="text" class="ds-file-input" id="userSearch" placeholder="Search by email or role..."
+                   style="max-width: 320px; margin-bottom: 12px;" oninput="filterUsers()">
+
+            <div style="overflow-x: auto;">
+                <table class="ds-table" id="dsAllUsersTable">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Expires</th>
+                            {% if is_super %}<th>Files</th><th>Last active</th><th>Batch match</th>{% endif %}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr data-search="{{ user.email|lower }} {{ user.role|lower }}">
+                            <td>
+                                <div class="ds-user-cell">
+                                    <span class="ds-avatar">{{ user.email[:1]|upper }}</span>
+                                    <span class="ds-user-email">{{ user.email }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="ds-badge {{ 'badge-super' if user.role == 'superadmin' else ('badge-admin' if user.role in ['admin', 'subsuperadmin'] else 'badge-user') }}">
+                                    {{ user.role|replace('subsuperadmin', 'Sub-Super')|title }}
+                                </span>
+                            </td>
+                            <td>{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '-' }}</td>
+                            <td>{{ user.expires_at.strftime('%b %d, %Y') if user.expires_at else 'Permanent' }}</td>
+                            {% if is_super %}
+                            {% set ustats = user_stats.get(user.email, {}) %}
+                            <td>{{ ustats.total_files_processed or 0 }}</td>
+                            <td>{{ ustats.last_processing.split(' ')[0] if ustats and ustats.last_processing else 'Never' }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('update_user_flags', user_id=user.email) }}">
+                                    {{ csrf_field() }}
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="can_use_batch_matching" value="1"
+                                               {% if user.can_use_batch_matching %}checked{% endif %}
+                                               onchange="this.form.submit()" style="cursor: pointer;">
+                                    </div>
+                                </form>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div class="d-flex gap-1">
+                                    {% if is_super or (session.role == 'admin' and user.created_by == session.user_id and user.role != 'superadmin') %}
+                                    <a href="{{ url_for('edit_user', user_id=user.email) }}" class="btn btn-outline-primary btn-sm" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if is_super and user.role != 'superadmin' %}
+                                    <form method="POST" action="{{ url_for('hide_user_route', user_id=user.email) }}" onsubmit="return confirm('Hide this user?');">
+                                        {{ csrf_field() }}
+                                        <button type="submit" class="btn btn-outline-warning btn-sm" title="Hide"><i class="fas fa-eye-slash"></i></button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('delete_user_route', user_id=user.email) }}" onsubmit="return confirm('Delete this user permanently?');">
+                                        {{ csrf_field() }}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if is_super %}
+        <!-- ------------------------ backup & restore -------------------- -->
+        <div class="ds-card" id="ds-backup">
+            <div class="ds-backup">
+                <span class="ds-activity-icon tone-blue" style="width: 44px; height: 44px; border-radius: 13px;"><i class="fas fa-database"></i></span>
+                <div>
+                    <h2 class="ds-card-title">Database Backup &amp; Restore</h2>
+                    <p class="ds-card-sub">Download a full copy, or restore one you saved earlier</p>
+                </div>
+                <form method="POST" action="{{ url_for('restore_backup') }}" enctype="multipart/form-data" style="margin-left: auto;"
+                      onsubmit="return confirm('Restoring a backup overwrites ALL current data. Continue?');">
+                    {{ csrf_field() }}
+                    <input type="file" name="backup_file" accept=".db,.sqlite,.sqlite3" class="ds-file-input" required>
+                    <a href="{{ url_for('download_backup') }}" class="ds-btn"><i class="fas fa-download"></i>Download Backup</a>
+                    <button type="submit" class="ds-btn ds-btn-primary"><i class="fas fa-sync-alt"></i>Restore</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="ds-foot">
+            <span>{{ site_settings.app_name }} &copy; {{ site_settings.current_year }}</span>
+            <span>|</span>
+            <span>{{ site_settings.footer_text }} <a href="{{ site_settings.footer_link }}" target="_blank" rel="noopener">{{ site_settings.footer_author }}</a></span>
+            <span>|</span>
+            <a href="mailto:{{ site_settings.footer_email }}"><i class="fas fa-envelope me-1"></i>{{ site_settings.footer_email }}</a>
+        </div>
+    </main>
+</div>
+
+<script>
+// ---- full user list toggle -------------------------------------------------
+(function () {
+    var panel = document.getElementById('ds-all-users');
+    if (!panel) return;
+
+    function openPanel(e) {
+        if (e) e.preventDefault();
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    ['dsManageUsersLink', 'dsManageUsersBtn'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('click', openPanel);
+    });
+
+    var closeBtn = document.getElementById('dsHideAllUsers');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
+    }
+})();
+
+function filterUsers() {
+    var query = (document.getElementById('userSearch').value || '').toLowerCase();
+    document.querySelectorAll('#dsAllUsersTable tbody tr').forEach(function (row) {
+        row.style.display = (row.dataset.search || '').includes(query) ? '' : 'none';
+    });
+}
+
+// ---- theme toggle (the app header isn't on this page) ----------------------
+(function () {
+    var btn = document.getElementById('dsThemeToggle');
+    if (!btn) return;
+
+    function syncIcon() {
+        var dark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
+        btn.innerHTML = dark ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+    }
+
+    btn.addEventListener('click', function () {
+        var next = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        document.body.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        syncIcon();
+    });
+
+    syncIcon();
+})();
+
+// ---- search ----------------------------------------------------------------
+(function () {
+    var input = document.getElementById('dsSearchInput');
+    var panel = document.getElementById('dsSearchPanel');
+    var hint = document.getElementById('dsSearchHint');
+    if (!input || !panel) return;
+
+    if (!/Mac|iPhone|iPad/.test(navigator.platform) && hint) hint.textContent = 'Ctrl K';
+
+    var timer = null;
+
+    function render(results) {
+        if (!results.length) {
+            panel.innerHTML = '<div class="ds-empty" style="padding:16px">No matches</div>';
+        } else {
+            panel.innerHTML = results.map(function (r) {
+                return '<a class="ds-result" href="' + r.url + '">' +
+                    '<span class="ds-activity-icon tone-slate"><i class="fas ' + r.icon + '"></i></span>' +
+                    '<span><span class="ds-result-title">' + r.title + '</span>' +
+                    '<span class="ds-result-sub" style="display:block">' + r.subtitle + '</span></span>' +
+                    '<span class="ds-result-type">' + r.type + '</span></a>';
+            }).join('');
+        }
+        panel.classList.add('is-open');
+    }
+
+    input.addEventListener('input', function () {
+        var q = input.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) { panel.classList.remove('is-open'); return; }
+        timer = setTimeout(function () {
+            fetch('{{ url_for("dashboard_search") }}?q=' + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (data) { render(data.results || []); })
+                .catch(function () { panel.classList.remove('is-open'); });
+        }, 200);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            input.focus();
+            input.select();
+        }
+        if (e.key === 'Escape') panel.classList.remove('is-open');
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!panel.contains(e.target) && e.target !== input) panel.classList.remove('is-open');
+    });
+})();
+</script>
+{% endblock %}

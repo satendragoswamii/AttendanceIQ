@@ -1,0 +1,960 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Welcome, Global Visitor - {{ site_settings.app_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing-story.css') }}?v=26">
+{% endblock %}
+
+{% block content %}
+{# The signed-out story page. base_comprehensive.html skips the app header and
+   footer here, so this page provides its own chrome: a sticky story nav on the
+   left and the story itself on the right. Artwork is inline SVG (same palette
+   as the app) so nothing is fetched from a third party.
+
+   Every string comes from Settings -> Landing Page (LANDING_SECTIONS in
+   comprehensive_app.py); the lp_text / lp_blocks / lp_lines filters escape it
+   and apply the inline Markdown subset. #}
+
+{% set lp = landing|default({}, true) %}
+{% set contact_email = lp.lp_contact_email or site_settings.footer_email %}
+{# A head-shot switched off in Settings is dropped here once, so every place it
+   would have appeared falls back to the initials badge together. #}
+{% set photo1 = lp.lp_person1_photo if lp.lp_person1_photo_show|lp_on else '' %}
+{% set photo2 = lp.lp_person2_photo if lp.lp_person2_photo_show|lp_on else '' %}
+{% set photo3 = lp.lp_person3_photo if lp.lp_person3_photo_show|lp_on else '' %}
+{# The support card borrows the Person 2 head-shot but keeps its own switch, so
+   the photo can appear on one card and not the other. #}
+{% set support_photo = photo2 if lp.lp_support_photo_show|lp_on else '' %}
+
+{# One entry per story section, in page order. `show` decides both whether the
+   section is drawn and whether its navigation link appears, so the page and the
+   nav can never disagree - a hidden section cannot leave behind a link that
+   jumps nowhere. Switches live in Settings -> Landing Page, one per section. #}
+{% set lp_sections = [
+     {'id': 'intro',   'show': lp.lp_hero_show|lp_on,    'icon': 'fa-home',           'label': lp.lp_nav_intro},
+     {'id': 'story',   'show': lp.lp_story_show|lp_on,   'icon': 'fa-map-signs',      'label': lp.lp_nav_story},
+     {'id': 'creator', 'show': lp.lp_creator_show|lp_on, 'icon': 'fa-user-astronaut', 'label': lp.lp_nav_creator},
+     {'id': 'support', 'show': lp.lp_support_show|lp_on, 'icon': 'fa-hands-helping',  'label': lp.lp_nav_support},
+     {'id': 'values',  'show': lp.lp_values_show|lp_on,  'icon': 'fa-gem',            'label': lp.lp_nav_values},
+     {'id': 'thanks',  'show': lp.lp_thanks_show|lp_on,  'icon': 'fa-heart',          'label': lp.lp_nav_thanks}
+] %}
+{% set lp_visible = lp_sections|selectattr('show')|list %}
+{# Only a real web address becomes a link; anything else is dropped rather than
+   written into an href. #}
+{% set creator_instagram = lp.lp_creator_instagram if (lp.lp_creator_instagram or '').startswith(('http://', 'https://')) else '' %}
+
+{# An uploaded photo is clickable: the data-* attributes are what the lightbox
+   at the bottom of the page reads. Without a photo it stays a plain initials
+   badge with nothing to open. #}
+{% macro avatar(photo, initials, name, warm=False, role='') -%}
+<span class="lp-avatar{% if warm %} is-warm{% endif %}{% if photo %} has-photo{% endif %}"
+      {%- if photo %} data-photo="{{ url_for('static', filename=photo) }}" data-name="{{ name }}" data-role="{{ role }}"{% endif %}>
+    {%- if photo -%}
+    <img src="{{ url_for('static', filename=photo) }}" alt="{{ name }}" loading="lazy">
+    {%- else -%}{{ initials }}{%- endif -%}
+</span>
+{%- endmacro %}
+
+<div class="lp">
+    <!-- ============================ SIDEBAR ============================ -->
+    <aside class="lp-side">
+      {# The rail is one screen tall and stuck to the top; the two panels are
+         centred inside it, which is what keeps them level with the story. #}
+      <div class="lp-side-sticky">
+        <div class="lp-panel lp-side-inner">
+            <a href="#intro" class="lp-brand">
+                <span class="lp-brand-mark">
+                    <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 5 L30 30 L22 30 L18 21 L14 30 L6 30 Z" fill="#fff"></path>
+                        <circle cx="27" cy="9" r="3" fill="#fff"></circle>
+                    </svg>
+                </span>
+                <span>
+                    <span class="lp-brand-name">{{ site_settings.app_name }}</span>
+                    <span class="lp-brand-by d-block">by {{ site_settings.footer_author }}</span>
+                </span>
+            </a>
+
+            {# One link per section that is switched on, in page order. The whole
+               timeline - the challenge, the beginning, the transformation, today
+               - is a single section, so it gets a single link. With every
+               section switched off the label goes too, rather than heading an
+               empty list. #}
+            {% if lp_visible %}
+            <div class="lp-nav-label">Story Navigation</div>
+            <nav class="lp-nav" id="lpNav">
+                {% for entry in lp_visible %}
+                <a href="#{{ entry.id }}"{% if loop.first %} class="is-active"{% endif %}><i class="fas {{ entry.icon }}"></i>{{ entry.label|lp_text }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+        </div>
+
+        {# Heading, text and each person are switched on and off separately in
+           Settings -> Landing Page -> Official access, so this card can be
+           trimmed to any part of itself - or dropped altogether. #}
+        {% if lp.lp_access_show|lp_on %}
+        <div class="lp-panel lp-side-inner lp-access">
+            {% if lp.lp_access_title_show|lp_on %}
+            <div class="lp-access-title"><i class="fas fa-shield-alt" style="color: #7DD3FC;"></i>{{ lp.lp_access_title|lp_text }}</div>
+            {% endif %}
+            {% if lp.lp_access_text_show|lp_on %}{{ lp.lp_access_text|lp_blocks }}{% endif %}
+            {% if lp.lp_person1_show|lp_on %}
+            <div class="lp-person">
+                {{ avatar(photo1, lp.lp_person1_initials, lp.lp_person1_name, role=lp.lp_person1_role) }}
+                <span>
+                    <span class="lp-person-name d-block">{{ lp.lp_person1_name|lp_text }}</span>
+                    <span class="lp-person-role">{{ lp.lp_person1_role|lp_text }}</span>
+                </span>
+            </div>
+            {% endif %}
+            {% if lp.lp_person2_show|lp_on %}
+            <div class="lp-person">
+                {{ avatar(photo2, lp.lp_person2_initials, lp.lp_person2_name, warm=True, role=lp.lp_person2_role) }}
+                <span>
+                    <span class="lp-person-name d-block">{{ lp.lp_person2_name|lp_text }}</span>
+                    <span class="lp-person-role">{{ lp.lp_person2_role|lp_text }}</span>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Someone else's words, kept in view while the story is read. Photo and
+           name are both optional: with neither, the quote stands on its own. #}
+        {% if lp.lp_motivation_show|lp_on and (lp.lp_motivation_quote or lp.lp_person3_name) %}
+        <div class="lp-panel lp-side-inner lp-motivation">
+            {% if lp.lp_motivation_title_show|lp_on %}
+            <div class="lp-access-title"><i class="fas fa-quote-left" style="color: #FBBF24;"></i>{{ lp.lp_motivation_title|lp_text }}</div>
+            {% endif %}
+            {% if photo3 or lp.lp_person3_name %}
+            <div class="lp-motivation-face">
+                {{ avatar(photo3, lp.lp_person3_initials, lp.lp_person3_name, role=lp.lp_person3_role) }}
+            </div>
+            {% endif %}
+            {% if lp.lp_motivation_quote %}
+            <p class="lp-motivation-quote">{{ lp.lp_motivation_quote|lp_quote }}</p>
+            {% endif %}
+            {% if lp.lp_person3_name %}
+            <div class="lp-motivation-by">
+                <span class="lp-person-name d-block">{{ lp.lp_person3_name|lp_text }}</span>
+                {% if lp.lp_person3_role %}<span class="lp-person-role">{{ lp.lp_person3_role|lp_text }}</span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# The app header is skipped on this page, so its two controls live at the
+           foot of the rail instead. The theme button keeps the id theme-switcher.js
+           binds to, so it behaves exactly as it does everywhere else. #}
+        <div class="lp-side-actions">
+            <button type="button" id="theme-toggle" class="lp-side-btn is-icon"
+                    aria-label="Toggle theme" title="Toggle theme">
+                <i class="fas fa-moon"></i>
+            </button>
+            {% if not session.user_id %}
+            <button type="button" class="lp-side-btn is-primary"
+                    data-bs-toggle="modal" data-bs-target="#loginModal">
+                <i class="fas fa-sign-in-alt"></i>Login
+            </button>
+            {% endif %}
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============================== STORY =========================== -->
+    <main class="lp-main">
+        <!-- ------------------------------ hero ------------------------ -->
+        {# Each section is drawn only when its own switch in Settings -> Landing
+           Page is on. The matching Story Navigation link is built from the same
+           switch further up, so the two stay in step. #}
+        {% if lp.lp_hero_show|lp_on %}
+        <section class="lp-panel lp-section lp-hero" id="intro">
+            <div>
+                {% if lp.lp_hero_pill %}<span class="lp-pill"><i class="fas fa-star"></i>{{ lp.lp_hero_pill|lp_text }}</span>{% endif %}
+                <h1>{{ lp.lp_hero_title|lp_text }}</h1>
+                {% if lp.lp_hero_subtitle %}<h2>{{ lp.lp_hero_subtitle|lp_text }}</h2>{% endif %}
+                {{ lp.lp_hero_intro|lp_blocks }}
+                {# The chips carry their own names, so the sidebar card can be
+                   emptied or switched off without taking them with it. #}
+                {% set chip1 = lp.lp_chip1_name if lp.lp_chip1_show|lp_on else '' %}
+                {% set chip2 = lp.lp_chip2_name if lp.lp_chip2_show|lp_on else '' %}
+                {% if chip1 or chip2 %}
+                <div class="lp-chips">
+                    {% if chip1 %}<span class="lp-chip"><i class="fas fa-user-circle"></i>{{ chip1|lp_text }}</span>{% endif %}
+                    {% if chip2 %}<span class="lp-chip is-purple"><i class="fas fa-user-circle"></i>{{ chip2|lp_text }}</span>{% endif %}
+                </div>
+                {% endif %}
+                {{ lp.lp_hero_outro|lp_blocks }}
+            </div>
+
+            {# Night-desk scene: window, stars, open book, mug, plant #}
+            <svg class="lp-art" viewBox="0 0 420 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                    <linearGradient id="lpSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#3B1D6E"/><stop offset="1" stop-color="#1B1348"/>
+                    </linearGradient>
+                    <linearGradient id="lpBook" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#C7D2FE"/><stop offset="1" stop-color="#818CF8"/>
+                    </linearGradient>
+                    <radialGradient id="lpGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0" stop-color="#A855F7" stop-opacity="0.55"/>
+                        <stop offset="1" stop-color="#A855F7" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>
+                <ellipse cx="215" cy="250" rx="185" ry="60" fill="url(#lpGlow)"/>
+                <rect x="120" y="22" width="250" height="185" rx="26" fill="url(#lpSky)" stroke="#7C3AED" stroke-opacity="0.5" stroke-width="2"/>
+                <g fill="#E9D5FF">
+                    <circle cx="165" cy="60" r="2.2"/><circle cx="205" cy="45" r="1.6"/><circle cx="250" cy="72" r="2"/>
+                    <circle cx="300" cy="52" r="1.8"/><circle cx="335" cy="92" r="2.2"/><circle cx="185" cy="105" r="1.5"/>
+                    <circle cx="272" cy="118" r="1.7"/><circle cx="320" cy="150" r="1.6"/>
+                </g>
+                <path d="M150 190 q40 -60 78 -22 q26 -46 62 -8 q22 -22 40 8 v32 h-180z" fill="#4C1D95" opacity="0.75"/>
+                <circle cx="318" cy="72" r="17" fill="#FDE68A" opacity="0.9"/>
+                <path d="M60 232 h300 a10 10 0 0 1 10 10 v8 H50 v-8 a10 10 0 0 1 10 -10z" fill="#312E81"/>
+                <path d="M150 232 l60 -26 v26z" fill="url(#lpBook)"/>
+                <path d="M272 232 l-62 -26 v26z" fill="#A5B4FC"/>
+                <path d="M210 206 v26" stroke="#4338CA" stroke-width="3"/>
+                <g>
+                    <rect x="292" y="196" width="34" height="36" rx="8" fill="#7C3AED"/>
+                    <path d="M326 206 h10 a9 9 0 0 1 0 18 h-10" stroke="#7C3AED" stroke-width="5" fill="none"/>
+                    <path d="M300 186 q4 -10 8 0" stroke="#C4B5FD" stroke-width="3" fill="none" opacity="0.8"/>
+                    <path d="M312 184 q4 -12 8 0" stroke="#C4B5FD" stroke-width="3" fill="none" opacity="0.6"/>
+                </g>
+                <g>
+                    <path d="M92 232 v-24" stroke="#34D399" stroke-width="4"/>
+                    <path d="M92 214 q-22 -6 -20 -26 q22 2 20 26z" fill="#34D399" opacity="0.9"/>
+                    <path d="M92 208 q22 -8 22 -28 q-24 4 -22 28z" fill="#10B981" opacity="0.9"/>
+                    <path d="M78 232 h28 l-4 22 h-20z" fill="#6D28D9"/>
+                </g>
+            </svg>
+        </section>
+        {% endif %}
+
+        <!-- ----------------------------- story ------------------------ -->
+        {% if lp.lp_story_show|lp_on %}
+        <section class="lp-panel lp-section" id="story">
+            <div class="lp-section-head">
+                <h2>{{ lp.lp_story_title|lp_text }}</h2>
+                {% if lp.lp_story_sub %}<p class="lp-section-sub">{{ lp.lp_story_sub|lp_text }}</p>{% endif %}
+            </div>
+
+            <div class="lp-timeline">
+                <article class="lp-step">
+                    <span class="lp-step-icon"><i class="fas fa-lightbulb"></i></span>
+                    <div>
+                        <h3>{{ lp.lp_step1_title|lp_text }}</h3>
+                        {{ lp.lp_step1_text|lp_blocks }}
+                    </div>
+                </article>
+
+                <article class="lp-step is-purple">
+                    <span class="lp-step-icon tone-pink"><i class="fas fa-heart"></i></span>
+                    <div>
+                        <h3>{{ lp.lp_step2_title|lp_text }}</h3>
+                        {{ lp.lp_step2_text|lp_blocks }}
+                    </div>
+                </article>
+
+                <article class="lp-step">
+                    <span class="lp-step-icon tone-violet"><i class="fas fa-code"></i></span>
+                    <div>
+                        <h3>{{ lp.lp_step3_title|lp_text }}</h3>
+                        {{ lp.lp_step3_text|lp_blocks }}
+                    </div>
+                </article>
+
+                <article class="lp-step is-purple">
+                    <span class="lp-step-icon tone-pink"><i class="fas fa-rocket"></i></span>
+                    <div>
+                        <h3>{{ lp.lp_step4_title|lp_text }}</h3>
+                        {{ lp.lp_step4_text|lp_blocks }}
+                    </div>
+                </article>
+
+                <article class="lp-step">
+                    <span class="lp-step-icon tone-amber"><i class="fas fa-magic"></i></span>
+                    <div>
+                        <h3>{{ lp.lp_step5_title|lp_text }}</h3>
+                        {{ lp.lp_step5_text|lp_blocks }}
+                    </div>
+                </article>
+            </div>
+
+            {% if lp.lp_quote %}
+            <blockquote class="lp-quote">
+                <i class="fas fa-quote-left q-open"></i>
+                <p>{{ lp.lp_quote|lp_lines }}</p>
+                <i class="fas fa-quote-right q-close"></i>
+            </blockquote>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <!-- ---------------------------- creator ----------------------- -->
+        {% if lp.lp_creator_show|lp_on %}
+        <section class="lp-panel lp-section" id="creator">
+            <div class="lp-section-head">
+                <h2>{{ lp.lp_creator_title|lp_text }}</h2>
+                {% if lp.lp_creator_lead %}<p class="lp-section-sub">{{ lp.lp_creator_lead|lp_text }}</p>{% endif %}
+            </div>
+
+            <div class="lp-creator">
+                {# The portrait is Person 1's head-shot from Settings, so there is
+                   one photo of the creator to keep up to date rather than two. #}
+                <aside class="lp-creator-side">
+                    <div class="lp-creator-card">
+                        {{ avatar(photo1, lp.lp_person1_initials, lp.lp_creator_name, role=lp.lp_creator_role) }}
+                        <h3>{{ lp.lp_creator_name|lp_text }}</h3>
+                        <p class="lp-creator-role">{{ lp.lp_creator_role|lp_text }}</p>
+                        {% if creator_instagram %}
+                        <a class="lp-creator-link" href="{{ creator_instagram }}" target="_blank" rel="noopener">
+                            <i class="fab fa-instagram"></i>Instagram
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    {# The column under the portrait would be empty for the whole
+                       length of this panel, so it carries a scene that changes
+                       with what is being read: the working life, then the
+                       reading and writing, then the belief that closes it. One
+                       is shown at a time and they cross-fade as the page moves
+                       - see the scroll handler at the foot of the page. #}
+                    <div class="lp-creator-art" id="lpCreatorArt" aria-hidden="true">
+                        <!-- servers, cloud and a line of code -->
+                        <svg class="lp-creator-scene is-on" viewBox="0 0 240 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <radialGradient id="lpArtGlow1" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0" stop-color="#38BDF8" stop-opacity="0.42"/>
+                                    <stop offset="1" stop-color="#38BDF8" stop-opacity="0"/>
+                                </radialGradient>
+                            </defs>
+                            <ellipse cx="120" cy="150" rx="104" ry="52" fill="url(#lpArtGlow1)"/>
+                            <path d="M74 56 a26 26 0 0 1 50 -9 a20 20 0 0 1 30 12 a18 18 0 0 1 -4 35 H82 a20 20 0 0 1 -8 -38z" fill="#4C1D95" opacity="0.85"/>
+                            <path d="M120 74 v30 m0 -30 l-9 10 m9 -10 l9 10" stroke="#7DD3FC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <g>
+                                <rect x="58" y="112" width="124" height="26" rx="7" fill="#312E81" stroke="#6366F1" stroke-opacity="0.5"/>
+                                <circle cx="72" cy="125" r="4" fill="#34D399"/><circle cx="86" cy="125" r="4" fill="#7DD3FC"/>
+                                <rect x="104" y="121" width="66" height="7" rx="3.5" fill="#4338CA"/>
+                                <rect x="58" y="144" width="124" height="26" rx="7" fill="#312E81" stroke="#6366F1" stroke-opacity="0.5"/>
+                                <circle cx="72" cy="157" r="4" fill="#F472B6"/><circle cx="86" cy="157" r="4" fill="#7DD3FC"/>
+                                <rect x="104" y="153" width="48" height="7" rx="3.5" fill="#4338CA"/>
+                            </g>
+                            <path d="M74 190 l-12 -9 l12 -9" stroke="#C084FC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <path d="M166 190 l12 -9 l-12 -9" stroke="#C084FC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <path d="M132 176 l-24 20" stroke="#818CF8" stroke-width="4" stroke-linecap="round"/>
+                        </svg>
+
+                        <!-- an open book by lamplight, and a pen -->
+                        <svg class="lp-creator-scene" viewBox="0 0 240 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="lpArtPage" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0" stop-color="#E0E7FF"/><stop offset="1" stop-color="#A5B4FC"/>
+                                </linearGradient>
+                                <radialGradient id="lpArtGlow2" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0" stop-color="#FDE68A" stop-opacity="0.4"/>
+                                    <stop offset="1" stop-color="#FDE68A" stop-opacity="0"/>
+                                </radialGradient>
+                            </defs>
+                            <ellipse cx="120" cy="120" rx="100" ry="80" fill="url(#lpArtGlow2)"/>
+                            {# A lamp to read by on one side, a pen on the other, both
+                               standing clear of the book below them. #}
+                            <g>
+                                <path d="M60 18 q10 13 10 22 a10 10 0 0 1 -20 0 q0 -9 10 -22z" fill="#FDE68A"/>
+                                <path d="M36 48 h48 l-7 15 a7 7 0 0 1 -6 4 H49 a7 7 0 0 1 -6 -4z" fill="#F59E0B"/>
+                                <path d="M32 48 h56" stroke="#FBBF24" stroke-width="5" stroke-linecap="round"/>
+                            </g>
+                            <g transform="rotate(38 176 52)">
+                                <rect x="168" y="16" width="17" height="44" rx="5" fill="#A855F7"/>
+                                <rect x="168" y="16" width="17" height="9" rx="4" fill="#7C3AED"/>
+                                <path d="M168 60 h17 l-8.5 17z" fill="#F0ABFC"/>
+                            </g>
+                            <g>
+                                <path d="M120 148 q-30 -22 -66 -14 v-48 q36 -8 66 14z" fill="url(#lpArtPage)"/>
+                                <path d="M120 148 q30 -22 66 -14 v-48 q-36 -8 -66 14z" fill="#C7D2FE"/>
+                                <path d="M120 100 v48" stroke="#4338CA" stroke-width="3"/>
+                                <g stroke="#6366F1" stroke-width="2.5" stroke-linecap="round" opacity="0.55">
+                                    <path d="M68 100 h34"/><path d="M68 112 h34"/><path d="M68 124 h24"/>
+                                    <path d="M138 100 h34"/><path d="M138 112 h26"/>
+                                </g>
+                                <path d="M46 148 h148 a8 8 0 0 1 8 8 v6 H38 v-6 a8 8 0 0 1 8 -8z" fill="#312E81"/>
+                            </g>
+                            <g fill="#F5D0FE" opacity="0.85">
+                                <circle cx="212" cy="40" r="3"/><circle cx="216" cy="104" r="2.4"/><circle cx="24" cy="92" r="2.4"/>
+                            </g>
+                        </svg>
+
+                        <!-- a seedling on rising ground: still learning -->
+                        <svg class="lp-creator-scene" viewBox="0 0 240 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <radialGradient id="lpArtGlow3" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0" stop-color="#34D399" stop-opacity="0.38"/>
+                                    <stop offset="1" stop-color="#34D399" stop-opacity="0"/>
+                                </radialGradient>
+                            </defs>
+                            <ellipse cx="120" cy="128" rx="98" ry="72" fill="url(#lpArtGlow3)"/>
+                            {# Steps on the right, the seedling standing clear of them on
+                               the left, so neither shape reads through the other. #}
+                            <g>
+                                <rect x="114" y="150" width="34" height="34" rx="6" fill="#4C1D95" opacity="0.8"/>
+                                <rect x="154" y="126" width="34" height="58" rx="6" fill="#5B21B6" opacity="0.85"/>
+                                <rect x="194" y="102" width="34" height="82" rx="6" fill="#6D28D9" opacity="0.9"/>
+                            </g>
+                            <path d="M36 128 q40 -34 88 -54 q36 -16 78 -18" stroke="#7DD3FC" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 12" fill="none" opacity="0.8"/>
+                            <g>
+                                <path d="M66 184 v-44" stroke="#34D399" stroke-width="5" stroke-linecap="round"/>
+                                <path d="M66 156 q-30 -8 -27 -36 q30 3 27 36z" fill="#34D399" opacity="0.9"/>
+                                <path d="M66 146 q30 -11 30 -39 q-33 6 -30 39z" fill="#10B981" opacity="0.9"/>
+                                <path d="M50 184 h32 l-5 20 h-22z" fill="#6D28D9"/>
+                            </g>
+                            <path d="M206 40 l5 13 l13 5 l-13 5 l-5 13 l-5 -13 l-13 -5 l13 -5z" fill="#F5D0FE"/>
+                            <g fill="#E9D5FF" opacity="0.85">
+                                <circle cx="34" cy="70" r="3.4"/><circle cx="168" cy="60" r="2.6"/><circle cx="26" cy="160" r="2.4"/>
+                            </g>
+                        </svg>
+                    </div>
+                </aside>
+
+                <div class="lp-creator-body">
+                    {{ lp.lp_creator_work|lp_blocks }}
+                    {% if lp.lp_creator_pivot %}
+                    <p class="lp-creator-pivot">{{ lp.lp_creator_pivot|lp_text }}</p>
+                    {% endif %}
+                    {{ lp.lp_creator_personal|lp_blocks }}
+
+                    {# The one part of the story told in the first person, so it is
+                       set apart under its own heading. #}
+                    {% if lp.lp_creator_reflection and lp.lp_creator_reflection_show|lp_on %}
+                    <div class="lp-creator-note">
+                        {% if lp.lp_creator_reflection_title %}
+                        <div class="lp-creator-note-title">
+                            <i class="fas fa-comment-dots"></i>{{ lp.lp_creator_reflection_title|lp_text }}
+                        </div>
+                        {% endif %}
+                        {{ lp.lp_creator_reflection|lp_blocks }}
+                    </div>
+                    {% endif %}
+
+                    {% if lp.lp_creator_closing %}
+                    <div class="lp-creator-closing">{{ lp.lp_creator_closing|lp_blocks }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if lp.lp_creator_quote %}
+            <blockquote class="lp-quote">
+                <i class="fas fa-quote-left q-open"></i>
+                <p>{{ lp.lp_creator_quote|lp_lines }}</p>
+                {% if lp.lp_creator_quote_by %}<cite>&mdash; {{ lp.lp_creator_quote_by|lp_text }}</cite>{% endif %}
+                <i class="fas fa-quote-right q-close"></i>
+            </blockquote>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <!-- ---------------------------- support ----------------------- -->
+        {% if lp.lp_support_show|lp_on %}
+        <section class="lp-panel lp-section" id="support">
+            <div class="lp-section-head" style="text-align: left;">
+                <h2>{{ lp.lp_support_title|lp_text }}</h2>
+            </div>
+            <div class="lp-support">
+                {# Two figures, one helping the other up #}
+                <svg class="lp-art" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <radialGradient id="lpSupportGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0" stop-color="#7C3AED" stop-opacity="0.55"/>
+                            <stop offset="1" stop-color="#7C3AED" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <circle cx="110" cy="100" r="86" fill="url(#lpSupportGlow)"/>
+                    <path d="M18 168 q52 -30 96 -58 q40 -26 88 -34" stroke="#6D28D9" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.7"/>
+                    <g fill="#38BDF8">
+                        <circle cx="78" cy="96" r="13"/>
+                        <path d="M78 112 q-17 6 -19 30 l10 4 l4 -16 v34 h10 v-22 h4 v22 h10 v-38 l16 -12 l-6 -9 l-16 10z"/>
+                    </g>
+                    <g fill="#C084FC">
+                        <circle cx="152" cy="62" r="13"/>
+                        <path d="M152 78 q17 6 19 30 l-10 4 l-4 -16 v34 h-10 v-22 h-4 v22 h-10 v-38 l-18 -10 l6 -9 l18 8z"/>
+                    </g>
+                    <path d="M104 100 q22 -12 34 -20" stroke="#F0ABFC" stroke-width="5" stroke-linecap="round"/>
+                    <g fill="#E9D5FF" opacity="0.85">
+                        <circle cx="42" cy="52" r="3"/><circle cx="186" cy="126" r="3"/><circle cx="60" cy="142" r="2.4"/>
+                    </g>
+                </svg>
+
+                <div>{{ lp.lp_support_text|lp_blocks }}</div>
+
+                <div class="lp-support-card">
+                    {{ avatar(support_photo, lp.lp_support_card_initials, lp.lp_support_card_name, warm=True, role=lp.lp_support_card_role) }}
+                    <h4>{{ lp.lp_support_card_name|lp_text }}</h4>
+                    {% if lp.lp_support_card_role %}<p class="lp-person-role">{{ lp.lp_support_card_role|lp_text }}</p>{% endif %}
+                    <p>{{ lp.lp_support_card_text|lp_lines }}</p>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- ----------------------------- values ----------------------- -->
+        {% if lp.lp_values_show|lp_on %}
+        <section class="lp-panel lp-section" id="values">
+            <div class="lp-section-head">
+                <h2>{{ lp.lp_values_title|lp_text }}</h2>
+            </div>
+            <div class="lp-values">
+                <div class="lp-value">
+                    <i class="fas fa-book-open" style="color: #7DD3FC;"></i>
+                    <h4>{{ lp.lp_value1_title|lp_text }}</h4>
+                    <p>{{ lp.lp_value1_text|lp_text }}</p>
+                </div>
+                <div class="lp-value">
+                    <i class="fas fa-shield-alt" style="color: #818CF8;"></i>
+                    <h4>{{ lp.lp_value2_title|lp_text }}</h4>
+                    <p>{{ lp.lp_value2_text|lp_text }}</p>
+                </div>
+                <div class="lp-value">
+                    <i class="fas fa-puzzle-piece" style="color: #C084FC;"></i>
+                    <h4>{{ lp.lp_value3_title|lp_text }}</h4>
+                    <p>{{ lp.lp_value3_text|lp_text }}</p>
+                </div>
+                <div class="lp-value">
+                    <i class="fas fa-chart-line" style="color: #34D399;"></i>
+                    <h4>{{ lp.lp_value4_title|lp_text }}</h4>
+                    <p>{{ lp.lp_value4_text|lp_text }}</p>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- ---------------------------- thank you --------------------- -->
+        {% if lp.lp_thanks_show|lp_on %}
+        <section class="lp-panel lp-section" id="thanks">
+            <div class="lp-section-head" style="text-align: left;">
+                <h2>{{ lp.lp_thanks_title|lp_text }}</h2>
+            </div>
+            <div class="lp-thanks">
+                {# Glowing heart with sparkles #}
+                <svg class="lp-art" viewBox="0 0 200 190" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="lpHeart" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stop-color="#E879F9"/><stop offset="1" stop-color="#7C3AED"/>
+                        </linearGradient>
+                        <radialGradient id="lpHeartGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0" stop-color="#E879F9" stop-opacity="0.5"/>
+                            <stop offset="1" stop-color="#E879F9" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <circle cx="100" cy="95" r="82" fill="url(#lpHeartGlow)"/>
+                    <path d="M100 152 C60 124 36 104 36 78 a30 30 0 0 1 64 -16 a30 30 0 0 1 64 16 c0 26 -24 46 -64 74z" fill="url(#lpHeart)"/>
+                    <path d="M74 66 a16 16 0 0 1 16 -10" stroke="#FBCFE8" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.8"/>
+                    <g fill="#F5D0FE">
+                        <path d="M40 40 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4z"/>
+                        <path d="M164 118 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3z"/>
+                        <circle cx="150" cy="42" r="3"/><circle cx="52" cy="140" r="3"/>
+                    </g>
+                </svg>
+
+                <div>{{ lp.lp_thanks_text|lp_blocks }}</div>
+
+                <div class="lp-contact">
+                    {{ lp.lp_contact_text|lp_blocks }}
+                    <hr>
+                    <a href="mailto:{{ contact_email }}">
+                        <i class="fas fa-envelope"></i>{{ contact_email }}
+                    </a>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </main>
+</div>
+
+{% if photo1 or photo2 or photo3 %}
+<div class="lp-photo-modal" id="lpPhotoModal" role="dialog" aria-modal="true" aria-labelledby="lpPhotoName" aria-hidden="true">
+    <button type="button" class="lp-photo-close" aria-label="Close photo">&times;</button>
+    <div class="lp-photo-inner">
+        <div class="lp-photo-frame"><img src="" alt=""></div>
+        <div class="lp-photo-name" id="lpPhotoName"></div>
+        <div class="lp-photo-role"></div>
+    </div>
+</div>
+{% endif %}
+
+{% if is_landing_preview %}
+<div class="pl-preview-bar">
+    <span><i class="fas fa-eye me-2"></i>Preview &mdash; visitors also see a Login button here</span>
+    <a href="{{ url_for('settings_management') }}" class="pl-preview-back">
+        <i class="fas fa-arrow-left me-1"></i>Back to Settings
+    </a>
+</div>
+{% endif %}
+
+<script>
+// Story navigation and focus mode. Both work off the same rule: a section is
+// "in place" when its top sits level with the top of the sidebar.
+(function () {
+    var page = document.querySelector('.lp');
+    var main = document.querySelector('.lp-main');
+    var sections = Array.prototype.slice.call(document.querySelectorAll('.lp-main .lp-section'));
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('#lpNav a'));
+    var jumpLinks = Array.prototype.slice.call(document.querySelectorAll('#lpNav a, .lp-brand'));
+    if (!page || !main || !sections.length) return;
+
+    // Distance from the top of the window that both columns start at, straight
+    // from the stylesheet so the two can never drift apart.
+    function topLine() {
+        return parseInt(getComputedStyle(page).getPropertyValue('--lp-top'), 10) || 24;
+    }
+
+    // Layout position, walking offsetTop. Deliberately not getBoundingClientRect:
+    // dimmed panels carry a translate and a scale, and the client rect includes
+    // both, which would aim any scroll dozens of pixels wrong.
+    function layoutTop(el) {
+        var y = 0;
+        while (el) {
+            y += el.offsetTop;
+            el = el.offsetParent;
+        }
+        return y;
+    }
+
+    // Where a panel comes to rest: the middle of the window if it fits there,
+    // otherwise the full screen from just under the top. One function decides
+    // this, and both the scrolling and the focus tracking read it, so the panel
+    // that lands and the panel that lights up are always the same one.
+    function clampScroll(target) {
+        var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        return Math.max(0, Math.min(Math.round(target), Math.max(0, Math.round(maxScroll))));
+    }
+
+    function restingScroll(section) {
+        var height = section.offsetHeight;
+        var fits = height <= window.innerHeight - topLine();
+        var target = fits
+            ? layoutTop(section) + height / 2 - window.innerHeight / 2
+            : layoutTop(section) - topLine();
+        return clampScroll(target);
+    }
+
+    // A panel that fits on screen has a single resting place. One that overhangs
+    // it - which now only happens on a narrow screen, where panels run long
+    // rather than being framed - holds the stretch from where its top lands to
+    // where its bottom arrives, so focus cannot hand over half way down and blur
+    // the paragraph being read.
+    function restingRange(section) {
+        var start = restingScroll(section);
+        if (!section.classList.contains('is-tall')) return [start, start];
+        var end = layoutTop(section) + section.offsetHeight - window.innerHeight + topLine();
+        return [start, Math.max(start, clampScroll(end))];
+    }
+
+    function scrollToSection(section) {
+        window.scrollTo({ top: restingScroll(section), behavior: 'smooth' });
+    }
+
+    jumpLinks.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            var href = link.getAttribute('href') || '';
+            if (href.charAt(0) !== '#') return;
+            var target = document.getElementById(href.slice(1));
+            if (!target) return;
+            e.preventDefault();
+            scrollToSection(target);
+        });
+    });
+
+    if (sections.length < 2) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    page.classList.add('lp-focus');
+    document.documentElement.classList.add('lp-snap');
+
+    // A framed panel holds more than it shows, and a hairline scrollbar is not
+    // enough to say so. Each one gets an arrow at its foot, over a soft fade, so
+    // there is no doubt the writing carries on below - and it doubles as a
+    // button that pages down. It fades out once the end is in view.
+    var CUE_SLACK = 40;
+
+    function addCue(section) {
+        if (section.querySelector(':scope > .lp-scroll-cue')) return;
+
+        var cue = document.createElement('div');
+        cue.className = 'lp-scroll-cue';
+
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'lp-scroll-cue-btn';
+        button.setAttribute('aria-label', 'Show more of this section');
+        button.innerHTML = '<i class="fas fa-chevron-down" aria-hidden="true"></i>';
+        button.addEventListener('click', function () {
+            section.scrollBy({ top: Math.round(section.clientHeight * 0.85), behavior: 'smooth' });
+        });
+
+        cue.appendChild(button);
+        section.appendChild(cue);
+        section.addEventListener('scroll', function () { updateCue(section); }, { passive: true });
+    }
+
+    function updateCue(section) {
+        var cue = section.querySelector(':scope > .lp-scroll-cue');
+        if (!cue) return;
+        var left = section.scrollHeight - section.scrollTop - section.clientHeight;
+        cue.classList.toggle('is-on', section.classList.contains('is-tall') && left > CUE_SLACK);
+    }
+
+    // Enough room after the last panel for it to reach the same line as all the
+    // others; without it the page runs out of scroll and leaves it sitting low.
+    // Measured rather than guessed, so it is exact at any window size.
+    function measure() {
+        if (!main) return;
+
+        // Panels with more in them than the window can hold are framed to it and
+        // scroll inside themselves - see the .is-tall note in the stylesheet.
+        // Measured from scrollHeight, not offsetHeight: once a panel is framed its
+        // offsetHeight *is* the frame, and reading that back would un-mark it, let
+        // it grow, and mark it again on the next pass.
+        var cap = window.innerHeight - topLine() * 2;
+        sections.forEach(function (section) {
+            var tall = section.scrollHeight > cap + 1;
+            section.classList.toggle('is-tall', tall);
+            if (tall) addCue(section);
+            updateCue(section);
+            // A scroll area needs to be reachable by keyboard as well as wheel.
+            if (tall) {
+                section.setAttribute('tabindex', '0');
+            } else {
+                section.removeAttribute('tabindex');
+            }
+        });
+
+        // Room either side, so the first and last panels can reach the middle
+        // like every other one. Measured rather than guessed: exact at any size.
+        var first = sections[0];
+        var last = sections[sections.length - 1];
+        main.style.paddingTop = '0px';
+        main.style.paddingBottom = '0px';
+
+        if (!first.classList.contains('is-tall')) {
+            // The sidebar rail only reaches the middle of the window once the
+            // page has scrolled down to where it starts, so the first panel is
+            // lined up against that point rather than against the raw middle.
+            var rail = document.querySelector('.lp-side-sticky');
+            var restLine = window.innerHeight / 2 + (rail ? layoutTop(rail) : 0);
+            var above = restLine - (layoutTop(first) + first.offsetHeight / 2);
+            main.style.paddingTop = Math.max(0, Math.ceil(above)) + 'px';
+        }
+
+        var wanted = last.classList.contains('is-tall')
+            ? layoutTop(last) - topLine()
+            : layoutTop(last) + last.offsetHeight / 2 - window.innerHeight / 2;
+        // A few pixels of slack past the last resting place, so the rail is not
+        // pinned against the bottom of the page while that panel is being read.
+        var below = wanted + 12 + window.innerHeight - document.documentElement.scrollHeight;
+        main.style.paddingBottom = Math.max(0, Math.ceil(below)) + 'px';
+    }
+
+    // Whichever panel's resting stretch the page is nearest to is the one being
+    // read - the one holding it outright, if the scroll is inside a tall panel.
+    // Resting places only ever increase down the page, so each panel owns a run
+    // of the scroll and the hand-over happens once, half way between two of
+    // them - no flicker while both are on screen.
+    var current = null;
+    var ticking = false;
+
+    function pick() {
+        var y = window.scrollY;
+        var closest = sections[0];
+        var smallest = Infinity;
+
+        sections.forEach(function (section) {
+            var range = restingRange(section);
+            var gap = y < range[0] ? range[0] - y : Math.max(0, y - range[1]);
+            if (gap < smallest) {
+                smallest = gap;
+                closest = section;
+            }
+        });
+        return closest;
+    }
+
+    function update() {
+        ticking = false;
+        var focused = pick();
+        if (focused === current) return;
+        current = focused;
+
+        var focusedIndex = sections.indexOf(focused);
+        sections.forEach(function (section, index) {
+            section.classList.toggle('is-dim', section !== focused);
+            // Panels above drift up out of frame, panels below sink away, so
+            // the focused one reads as floating between them.
+            section.classList.toggle('is-above', index < focusedIndex);
+        });
+
+        navLinks.forEach(function (link) {
+            link.classList.toggle('is-active', link.getAttribute('href') === '#' + focused.id);
+        });
+    }
+
+    function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(update);
+    }
+
+    function remeasure() {
+        measure();
+        update();
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', remeasure);
+
+    // Everything above is measured from laid-out heights, and at first run the
+    // web font has not arrived yet - every panel is still in the fallback face
+    // and a different height. Re-measuring as the page settles is what keeps a
+    // jumped-to panel landing where it should without being nudged by hand.
+    window.addEventListener('load', remeasure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+    if (window.ResizeObserver) {
+        // Panels change height on their own too - a photo arriving, a lightbox
+        // image decoding. Watching the panels (never .lp-main, whose padding
+        // this sets) keeps that from turning into a feedback loop.
+        var observer = new ResizeObserver(function () {
+            window.requestAnimationFrame(remeasure);
+        });
+        sections.forEach(function (section) { observer.observe(section); });
+    }
+
+    // While a dialog is open (the login form) the story behind it should read
+    // normally rather than being faded and blurred under the backdrop as well.
+    document.addEventListener('show.bs.modal', function () { page.classList.add('is-paused'); });
+    document.addEventListener('hidden.bs.modal', function () { page.classList.remove('is-paused'); });
+
+    measure();
+    update();
+})();
+
+// The artwork beside the creator's portrait, changing with what is being read:
+// the working life, then the reading and writing, then the belief that closes
+// it. Each scene after the first is tied to the paragraph it belongs to and
+// takes over as that paragraph reaches the middle of the screen. Tied to the
+// writing rather than to a share of the scroll, because the panel is only a
+// few hundred pixels taller than the window - split three ways, that is one
+// flick of the wheel per scene and the middle one is never seen.
+(function () {
+    var art = document.getElementById('lpCreatorArt');
+    if (!art) return;
+
+    var scenes = Array.prototype.slice.call(art.querySelectorAll('.lp-creator-scene'));
+    if (scenes.length < 2) return;
+
+    // Nothing scrolls under the reader with motion reduced, so the opening
+    // scene simply stays where it is.
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // One handover point per scene past the first; a scene whose paragraph has
+    // been emptied in Settings has no anchor and is skipped. Client rects are
+    // fine here: this panel only carries a transform while it is dimmed out,
+    // and the artwork is not being looked at then.
+    // The growing scene belongs to the first-person passage about turning a
+    // problem into a way out; without it, it falls back to the closing card.
+    var body = art.closest('.lp-creator');
+    var anchors = [
+        null,
+        body.querySelector('.lp-creator-pivot'),
+        body.querySelector('.lp-creator-note, .lp-creator-closing')
+    ];
+
+    var shown = 0;
+    var ticking = false;
+
+    function update() {
+        ticking = false;
+        var line = window.innerHeight / 2;
+        var index = 0;
+        for (var i = 1; i < scenes.length; i++) {
+            if (anchors[i] && anchors[i].getBoundingClientRect().top < line) index = i;
+        }
+        if (index === shown) return;
+        scenes[shown].classList.remove('is-on');
+        scenes[index].classList.add('is-on');
+        shown = index;
+    }
+
+    function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(update);
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    // A framed panel scrolls inside itself, and a scroll on an element does not
+    // reach the window, so the panel has to be listened to in its own right.
+    var panel = art.closest('.lp-section');
+    if (panel) panel.addEventListener('scroll', onScroll, { passive: true });
+    update();
+})();
+
+// Photo lightbox: click a head-shot to blow it up in a circle over a blurred page.
+(function () {
+    var modal = document.getElementById('lpPhotoModal');
+    var avatars = Array.prototype.slice.call(document.querySelectorAll('.lp-avatar.has-photo'));
+    if (!modal || !avatars.length) return;
+
+    // The panels use backdrop-filter, which would re-root a fixed child, so the
+    // overlay lives directly on <body>.
+    document.body.appendChild(modal);
+
+    var image = modal.querySelector('.lp-photo-frame img');
+    var nameEl = modal.querySelector('.lp-photo-name');
+    var roleEl = modal.querySelector('.lp-photo-role');
+    var closeBtn = modal.querySelector('.lp-photo-close');
+    var lastFocused = null;
+
+    function open(avatar) {
+        lastFocused = avatar;
+        image.src = avatar.getAttribute('data-photo') || '';
+        image.alt = avatar.getAttribute('data-name') || '';
+        nameEl.textContent = avatar.getAttribute('data-name') || '';
+        roleEl.textContent = avatar.getAttribute('data-role') || '';
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('lp-photo-open');
+        closeBtn.focus();
+    }
+
+    function close() {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('lp-photo-open');
+        if (lastFocused) lastFocused.focus();
+    }
+
+    avatars.forEach(function (avatar) {
+        avatar.setAttribute('role', 'button');
+        avatar.setAttribute('tabindex', '0');
+        avatar.setAttribute('aria-label', 'View photo of ' + (avatar.getAttribute('data-name') || 'this person'));
+        avatar.addEventListener('click', function () { open(avatar); });
+        avatar.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            open(avatar);
+        });
+    });
+
+    // Anywhere outside the photo closes it, as does the button and Escape.
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal || e.target.closest('.lp-photo-close')) close();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+    });
+})();
+</script>
+{% endblock %}

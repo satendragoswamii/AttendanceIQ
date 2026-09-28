@@ -1,0 +1,2116 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Batch Management - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<style>
+/* Batch Management Styles */
+.batch-header {
+    background: linear-gradient(135deg, var(--primary-accent) 0%, var(--secondary-accent) 100%);
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    margin-bottom: 0.5rem;
+    color: white;
+}
+
+.batch-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Search Box */
+.search-box {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.search-input {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+/* Global Search Results */
+.global-search-results {
+    display: none;
+    background: var(--bg-card);
+    border: 2px solid var(--primary-accent);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.global-search-results.active {
+    display: block;
+}
+
+.search-results-header {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, var(--primary-accent) 0%, var(--secondary-accent) 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-results-header h6 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.search-results-body {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: var(--bg-elevated);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-info {
+    flex: 1;
+}
+
+.search-result-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.search-result-email {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.search-result-batch {
+    display: inline-block;
+    background: var(--primary-accent);
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+}
+
+.search-result-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.search-result-actions .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.search-highlight {
+    background: yellow;
+    color: black;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* Expand layout width on this page for larger screen visibility */
+@media (min-width: 1200px) {
+    .main-content .container-fluid {
+        max-width: 100% !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+    }
+    .main-content .row.justify-content-center > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+}
+
+/* Main Grid */
+.batch-workspace {
+    overflow-x: visible;
+    padding-bottom: 0.25rem;
+}
+
+.batch-grid {
+    display: grid;
+    grid-template-columns: 20% 25% 1fr;
+    gap: 0.75rem;
+    height: calc(100vh - 320px);
+    min-height: 400px;
+}
+
+/* Group List */
+.group-list-container {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.group-list-header {
+    padding: 0.5rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+}
+
+.group-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.35rem;
+    min-width: 0;
+}
+
+.group-wrapper {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.35rem;
+    margin-bottom: 0.4rem;
+}
+
+.group-item {
+    border-radius: 4px;
+    padding: 0.3rem 0.4rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 0;
+    font-size: 0.75rem;
+}
+
+.group-item:hover {
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.group-item.active {
+    border-left: 3px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.group-item .group-name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    gap: 0.5rem;
+}
+
+.group-item .group-name span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-item .group-meta {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-top: 0.15rem;
+}
+
+.group-item .group-count {
+    background: #f59e0b;
+    color: white;
+    padding: 0.08rem 0.3rem;
+    border-radius: 12px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* Sub-Group Styling */
+.subgroup-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.subgroup-item {
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.subgroup-item:hover {
+    border-color: var(--primary-accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.subgroup-item.active {
+    border-color: var(--primary-accent);
+    background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.subgroup-item.subgroup-completed {
+    opacity: 0.6;
+}
+
+.ungrouped-section {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 2px dashed var(--border-color);
+}
+
+/* Batch List */
+.batch-list-container {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.batch-list-header {
+    padding: 0.5rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+}
+
+.batch-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    min-width: 0;
+}
+
+.batch-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem;
+    margin-bottom: 0.4rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    font-size: 0.75rem;
+}
+
+.batch-item:hover {
+    border-color: var(--primary-accent);
+    transform: translateX(3px);
+}
+
+.batch-item.active {
+    border-color: var(--primary-accent);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.batch-item .batch-checkbox {
+    flex-shrink: 0;
+}
+
+.batch-item .batch-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.batch-item .batch-name {
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-bottom: 0.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.batch-item .batch-meta {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.batch-item .batch-count {
+    background: var(--primary-accent);
+    color: white;
+    padding: 0.08rem 0.3rem;
+    border-radius: 12px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.batch-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}
+
+.batch-item-actions .btn {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 0.65rem;
+}
+
+/* Batch Details Panel */
+.batch-details {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.batch-panel {
+    min-width: 0;
+}
+
+.batch-details-header {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.batch-details-header h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.batch-details-header > .d-flex {
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+/* Add Student Form */
+.add-student-form {
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.add-student-form form {
+    min-width: 0;
+    width: 100%;
+}
+
+.add-student-form .row {
+    min-width: 0;
+}
+
+.add-student-form .col-md-4,
+.add-student-form .col-md-5,
+.add-student-form .col-md-3 {
+    min-width: 0;
+}
+
+.add-student-form .form-control {
+    height: 32px;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.add-student-form .btn {
+    height: 32px;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    min-width: 80px;
+}
+
+/* Students Table */
+.students-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    min-width: 0;
+}
+
+.students-table {
+    width: 100%;
+    font-size: 0.75rem;
+    margin: 0;
+    table-layout: fixed;
+}
+
+.students-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    z-index: 5;
+}
+
+.students-table th {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.students-table td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.students-table tbody tr:hover {
+    background: var(--bg-elevated);
+}
+
+/* Explicit table column layouts */
+.students-table .col-checkbox {
+    width: 45px;
+    text-align: center;
+}
+
+.students-table .col-name {
+    width: 18%;
+}
+
+.students-table .col-email {
+    width: 24%;
+}
+
+.students-table .col-institute-email {
+    width: 22%;
+}
+
+.students-table .col-contact {
+    width: 13%;
+}
+
+.students-table .col-actions {
+    width: 135px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* Bulk Actions Bar */
+.bulk-actions {
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-top: 1px solid var(--border-color);
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.bulk-actions.visible {
+    display: flex;
+}
+
+.bulk-actions .btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+}
+
+.bulk-actions .btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Batch Bulk Actions */
+.batch-bulk-actions {
+    padding: 0.65rem 0.8rem;
+    background: linear-gradient(135deg, var(--primary-accent) 0%, var(--secondary-accent) 100%);
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    border-radius: 0 0 10px 10px;
+}
+
+.batch-bulk-actions.visible {
+    display: flex;
+}
+
+.batch-bulk-actions .btn {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: white;
+}
+
+.batch-bulk-actions .btn:hover {
+    background: rgba(255,255,255,0.28);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    padding: 2rem;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* No Results */
+.no-results {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .batch-workspace {
+        overflow-x: visible;
+    }
+
+    .batch-grid {
+        grid-template-columns: 1fr 1fr;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+    }
+    
+    .group-list-container {
+        grid-column: span 2;
+        max-height: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .batch-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .group-list-container {
+        grid-column: auto;
+    }
+    
+    .group-list-container,
+    .batch-list-container {
+        max-height: 300px;
+    }
+    
+    .batch-details {
+        min-height: 400px;
+    }
+}
+</style>
+
+<!-- Header -->
+<div class="batch-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h2><i class="fas fa-layer-group me-2"></i>Batch Management</h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#importExportModal">
+                <i class="fas fa-exchange-alt me-1"></i>Import/Export
+            </button>
+            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                <i class="fas fa-folder-plus me-1"></i>New Group
+            </button>
+            {% if session.role == 'superadmin' %}
+            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#assignUserGroupsModal">
+                <i class="fas fa-user-cog me-1"></i>Assign User
+            </button>
+            <a href="{{ url_for('manage_excluded_participants') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-user-slash me-1"></i>Exclusions
+            </a>
+            {% endif %}
+            <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-home me-1"></i>Home
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="search-box">
+    <div class="row g-2 align-items-center">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control search-input" id="batchSearch" placeholder="Search batches...">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="fas fa-user-graduate"></i></span>
+                <input type="text" class="form-control search-input" id="globalStudentSearch" placeholder="Search all students by name or email...">
+                <button class="btn btn-outline-secondary" type="button" id="clearGlobalSearch" style="display: none;" aria-label="Clear search">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-2 text-end">
+            <span class="badge bg-primary" style="font-size: 0.8rem;" id="activeTotalBadge">{{ batches|length }} Active</span>
+            <span class="badge bg-success" style="font-size: 0.8rem;" id="completedTotalBadge">{{ completed_batches|length }} Completed</span>
+        </div>
+    </div>
+</div>
+
+<!-- Global Search Results Panel -->
+<div class="global-search-results" id="globalSearchResults">
+    <div class="search-results-header">
+        <h6><i class="fas fa-search me-2"></i>Search Results: <span id="searchResultCount">0</span> students found</h6>
+        <button class="btn btn-sm btn-light" onclick="closeGlobalSearch()">
+            <i class="fas fa-times me-1"></i>Close
+        </button>
+    </div>
+    <div class="search-results-body" id="searchResultsBody">
+    </div>
+</div>
+
+<!-- Main Grid -->
+<div class="batch-workspace">
+<div class="batch-grid" id="mainBatchGrid">
+    <!-- Left: Group & Sub-Group List -->
+    <div class="group-list-container">
+        <div class="group-list-header">
+            <span class="fw-semibold" style="font-size: 0.9rem;"><i class="fas fa-folder me-2"></i>Groups & Sub-Groups</span>
+            <button class="btn btn-sm btn-light py-0 px-2" data-bs-toggle="modal" data-bs-target="#createGroupModal" title="New Group">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        
+        <div class="group-list" id="groupList">
+            <!-- All Groups Reset Selector -->
+            <div class="group-item mb-2" data-group-id="all" onclick="selectGroup(null)">
+                <div class="group-name">
+                    <span class="fw-bold"><i class="fas fa-globe me-2 text-primary"></i>Show All Batches</span>
+                </div>
+            </div>
+
+            {% if groups %}
+                {% for g in groups %}
+                <div class="group-wrapper">
+                    <div class="group-item" data-group-id="{{ g.id }}" onclick="selectGroup({{ g.id }})">
+                        <div class="group-name">
+                            <span><i class="fas fa-folder me-2 text-warning"></i>{{ g.name }}</span>
+                            <span class="group-count">{{ group_batch_counts.get(g.id, 0) }}</span>
+                        </div>
+                        {% if g.description %}
+                        <div class="group-meta text-truncate" title="{{ g.description }}">{{ g.description }}</div>
+                        {% endif %}
+                        <div class="mt-1 d-flex gap-1">
+                            <button class="btn btn-outline-warning btn-sm py-0 px-1" data-group-id="{{ g.id }}" data-group-name="{{ g.name }}" onclick="event.stopPropagation(); createSubgroup(this.dataset.groupId, this.dataset.groupName)" title="Add Sub-Group" style="font-size: 0.65rem;">
+                                <i class="fas fa-plus"></i> Sub-Group
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm py-0 px-1" data-group-id="{{ g.id }}" data-group-name="{{ g.name }}" data-group-description="{{ g.description or '' }}" onclick="event.stopPropagation(); editGroup(this.dataset.groupId, this.dataset.groupName, this.dataset.groupDescription)" title="Edit Group" style="font-size: 0.65rem;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form method="POST" action="{{ url_for('delete_batch_group_route', group_id=g.id) }}" class="d-inline" onclick="event.stopPropagation()" data-confirm="Delete group &quot;{{ g.name|e }}&quot;? Batches in this group will become ungrouped.">
+                                {{ csrf_field() }}
+                                <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete Group" style="font-size: 0.65rem;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Subgroups under this group -->
+                    <div class="subgroup-list ps-3 mt-2" style="border-left: 2px solid var(--border-color);">
+                        {% for sg in subgroups %}
+                            {% if sg.group_id == g.id %}
+                            <div class="subgroup-item py-1 px-2 mb-1 d-flex justify-content-between align-items-center {% if sg.is_completed %}subgroup-completed{% endif %}" data-subgroup-id="{{ sg.id }}" onclick="event.stopPropagation(); selectSubgroup({{ sg.id }})" style="cursor: pointer; font-size: 0.75rem;">
+                                <span class="text-truncate" title="{{ sg.name }}">
+                                    <i class="fas {% if sg.is_completed %}fa-archive text-success{% else %}fa-folder-open text-info{% endif %} me-2"></i>{{ sg.name }}
+                                    {% if sg.is_completed %}<span class="badge bg-success ms-1" style="font-size: 0.55rem;">Completed</span>{% endif %}
+                                </span>
+                                <div class="d-flex align-items-center gap-1">
+                                    {% if sg.is_completed %}
+                                    <button class="btn btn-link text-info p-0" data-subgroup-id="{{ sg.id }}" data-subgroup-name="{{ sg.name }}" onclick="event.stopPropagation(); restoreSubgroup(this.dataset.subgroupId, this.dataset.subgroupName)" title="Restore sub-group (make active again)" style="font-size: 0.7rem; text-decoration: none;">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-link text-success p-0" data-subgroup-id="{{ sg.id }}" data-subgroup-name="{{ sg.name }}" onclick="event.stopPropagation(); completeSubgroup(this.dataset.subgroupId, this.dataset.subgroupName)" title="Mark sub-group as completed (hides it from Smart Matcher)" style="font-size: 0.7rem; text-decoration: none;">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-link text-primary p-0" data-subgroup-id="{{ sg.id }}" data-subgroup-name="{{ sg.name }}" data-subgroup-description="{{ sg.description or '' }}" onclick="event.stopPropagation(); editSubgroup(this.dataset.subgroupId, this.dataset.subgroupName, this.dataset.subgroupDescription)" title="Rename sub-group" style="font-size: 0.7rem; text-decoration: none;">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form method="POST" action="{{ url_for('delete_batch_subgroup_route', subgroup_id=sg.id) }}" class="d-inline" onclick="event.stopPropagation()" data-confirm="Delete sub-group &quot;{{ sg.name|e }}&quot;? Batches in this sub-group will remain in their parent Group but become unassigned from the sub-group.">
+                                        {{ csrf_field() }}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1 border-0" title="Delete Sub-Group" style="font-size: 0.65rem;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Ungrouped Section -->
+            <div class="ungrouped-section">
+                <div class="group-item" data-group-id="0" onclick="selectGroup(0)">
+                    <div class="group-name">
+                        <span><i class="fas fa-inbox me-2 text-secondary"></i>Ungrouped</span>
+                        <span class="group-count" style="background: #6b7280;">{{ ungrouped_batches|length }}</span>
+                    </div>
+                    <div class="group-meta">Batches not in any group</div>
+                </div>
+            </div>
+            
+            {% if not groups and not ungrouped_batches %}
+            <div class="empty-state" style="padding: 1rem;">
+                <i class="fas fa-folder-open" style="font-size: 2rem;"></i>
+                <p style="font-size: 0.8rem;">No groups yet</p>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                    <i class="fas fa-folder-plus me-1"></i>Create your first group
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Middle: Batch List & Tabs -->
+    <div class="batch-list-container">
+        <!-- Tabs for Active vs Completed batches -->
+        <div class="tab-container mt-2 px-2">
+            <ul class="nav nav-pills nav-fill bg-elevated rounded p-1" style="font-size: 0.8rem;">
+                <li class="nav-item">
+                    <button class="nav-link active py-1" id="active-batches-tab" onclick="switchTab('active')">
+                        Active (<span id="activeBatchesCount">{{ batches|length }}</span>)
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link py-1" id="completed-batches-tab" onclick="switchTab('completed')">
+                        Completed (<span id="completedBatchesCount">{{ completed_batches|length }}</span>)
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="batch-list-header mt-1">
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="selectAllBatches" class="form-check-input" onchange="toggleAllBatches(this)">
+                <span class="fw-semibold" style="font-size: 0.8rem;" id="batchListTitle">All Batches</span>
+            </div>
+        </div>
+        
+        <div class="batch-list" id="batchList">
+            <!-- Active Batches -->
+            {% if batches or completed_batches %}
+                {% for b in batches %}
+                <div class="batch-item active-batch-item {% if selected_batch and selected_batch.id == b.id %}active{% endif %}" 
+                     data-batch-id="{{ b.id }}" data-batch-name="{{ b.name|lower }}" data-group-id="{{ b.group_id or 0 }}" data-subgroup-id="{{ b.subgroup_id or 0 }}">
+                    <input type="checkbox" class="form-check-input batch-checkbox" value="{{ b.id }}" 
+                           onchange="updateBatchSelection()" onclick="event.stopPropagation()">
+                    <div class="batch-info" onclick="selectBatch({{ b.id }})">
+                        <div class="batch-name">
+                            <i class="fas fa-users me-1 text-primary"></i>{{ b.name }}
+                            {% if b.subgroup_id %}
+                                <span class="badge bg-info text-dark ms-1" style="font-size: 0.55rem;">
+                                    {% for sg in subgroups %}
+                                        {% if sg.id == b.subgroup_id %}{{ sg.name }}{% endif %}
+                                    {% endfor %}
+                                </span>
+                            {% elif b.group_id %}
+                                <span class="badge bg-warning text-dark ms-1" style="font-size: 0.55rem;">
+                                    {% for g in groups %}
+                                        {% if g.id == b.group_id %}{{ g.name }}{% endif %}
+                                    {% endfor %}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="batch-meta">{{ b.created_at }} • {{ b.created_by }}{% if b.required_duration_minutes %} • Required: {{ b.required_duration_minutes|int }} min{% endif %}</div>
+                    </div>
+                    <span class="batch-count">{{ batch_counts.get(b.id, 0) }}</span>
+                    <div class="batch-item-actions">
+                        <button type="button" class="btn btn-outline-success btn-sm" data-batch-id="{{ b.id }}" data-batch-name="{{ b.name }}" onclick="event.stopPropagation(); completeBatch(this.dataset.batchId, this.dataset.batchName)" title="Complete Batch">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-batch-id="{{ b.id }}" data-batch-name="{{ b.name }}" data-batch-duration="{{ b.required_duration_minutes or '' }}" onclick="event.stopPropagation(); editBatchName(this.dataset.batchId, this.dataset.batchName, this.dataset.batchDuration)" title="Edit batch">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('delete_batch_route', batch_id=b.id) }}" class="d-inline" onclick="event.stopPropagation()" data-confirm="Delete batch {{ b.name|e }} and all students?">
+                            {{ csrf_field() }}
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete batch">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Completed Batches -->
+                {% for b in completed_batches %}
+                <div class="batch-item completed-batch-item {% if selected_batch and selected_batch.id == b.id %}active{% endif %}" 
+                     data-batch-id="{{ b.id }}" data-batch-name="{{ b.name|lower }}" data-group-id="{{ b.group_id or 0 }}" data-subgroup-id="{{ b.subgroup_id or 0 }}" style="display: none;">
+                    <input type="checkbox" class="form-check-input batch-checkbox" value="{{ b.id }}" 
+                           onchange="updateBatchSelection()" onclick="event.stopPropagation()">
+                    <div class="batch-info" onclick="selectBatch({{ b.id }})">
+                        <div class="batch-name">
+                            <i class="fas fa-archive me-1 text-success"></i>{{ b.name }}
+                            {% if b.subgroup_id %}
+                                <span class="badge bg-info text-dark ms-1" style="font-size: 0.55rem;">
+                                    {% for sg in subgroups %}
+                                        {% if sg.id == b.subgroup_id %}{{ sg.name }}{% endif %}
+                                    {% endfor %}
+                                </span>
+                            {% elif b.group_id %}
+                                <span class="badge bg-warning text-dark ms-1" style="font-size: 0.55rem;">
+                                    {% for g in groups %}
+                                        {% if g.id == b.group_id %}{{ g.name }}{% endif %}
+                                    {% endfor %}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="batch-meta">{{ b.created_at }} • {{ b.created_by }}{% if b.required_duration_minutes %} • Required: {{ b.required_duration_minutes|int }} min{% endif %}</div>
+                    </div>
+                    <span class="batch-count">{{ batch_counts.get(b.id, 0) }}</span>
+                    <div class="batch-item-actions">
+                        <button type="button" class="btn btn-outline-info btn-sm" data-batch-id="{{ b.id }}" data-batch-name="{{ b.name }}" onclick="event.stopPropagation(); restoreBatch(this.dataset.batchId, this.dataset.batchName)" title="Restore Batch">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-batch-id="{{ b.id }}" data-batch-name="{{ b.name }}" data-batch-duration="{{ b.required_duration_minutes or '' }}" onclick="event.stopPropagation(); editBatchName(this.dataset.batchId, this.dataset.batchName, this.dataset.batchDuration)" title="Edit batch">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('delete_batch_route', batch_id=b.id) }}" class="d-inline" onclick="event.stopPropagation()" data-confirm="Delete batch {{ b.name|e }} and all students?">
+                            {{ csrf_field() }}
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete batch">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p style="font-size: 0.85rem;">No batches yet</p>
+                    <p style="font-size: 0.75rem;">Use Import/Export to upload</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Batch Bulk Actions -->
+        <div class="batch-bulk-actions" id="batchBulkActions">
+            <span style="font-size: 0.8rem;"><span id="selectedBatchCount">0</span> selected</span>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm" onclick="bulkMoveBatches()" title="Move to Group">
+                    <i class="fas fa-folder me-1"></i>Move
+                </button>
+                <button class="btn btn-sm" onclick="bulkSetDuration()" title="Set Required Duration">
+                    <i class="fas fa-clock me-1"></i>Duration
+                </button>
+                <button class="btn btn-sm btn-success" id="bulkCompleteBtn" onclick="bulkCompleteBatches()">
+                    <i class="fas fa-check me-1"></i>Complete
+                </button>
+                <button class="btn btn-sm btn-info" id="bulkRestoreBtn" onclick="bulkRestoreBatches()" style="display: none;">
+                    <i class="fas fa-undo me-1"></i>Restore
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="bulkDeleteBatches()">
+                    <i class="fas fa-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Batch Details -->
+    <div class="batch-details">
+        {% if batches or completed_batches %}
+            <!-- Dynamic container for AJAX loaded batch details -->
+            <div id="dynamic-batch-details-container" style="height: 100%;">
+                <!-- Loading indicator -->
+                <div id="batch-details-loader" style="display: none; height: 100%; justify-content: center; align-items: center; flex-direction: column;">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading batch details...</p>
+                </div>
+                <!-- Content will be injected here -->
+                <div id="batch-details-content" style="height: 100%;"></div>
+            </div>
+            
+            <!-- No Batch Selected State -->
+            <div class="empty-state" id="no-batch-selected" {% if selected_batch %}style="display: none;"{% endif %}>
+                <i class="fas fa-hand-pointer"></i>
+                <p style="font-size: 0.9rem;">Select a Batch</p>
+                <p style="font-size: 0.8rem;">Click on a batch to manage its students</p>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p style="font-size: 0.9rem;">No Batches</p>
+                <p style="font-size: 0.8rem;">Use Import/Export button to upload batches</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+</div>
+
+<!-- Generic Confirm Modal -->
+<div class="modal fade" id="genericConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-danger text-white">
+                <h6 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Action</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="genericConfirmMessage" class="mb-0 small"></p>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger btn-sm" id="genericConfirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-warning text-dark">
+                <h6 class="modal-title"><i class="fas fa-folder-plus me-2"></i>Create New Group</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_batch_group_route') }}">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Group Name *</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g., Semester 1" required>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Description</label>
+                        <input type="text" name="description" class="form-control" placeholder="Optional description">
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-plus me-1"></i>Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div class="modal fade" id="editGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Group</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editGroupForm" method="POST">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Group Name *</label>
+                        <input type="text" name="name" id="editGroupName" class="form-control" required>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Description</label>
+                        <input type="text" name="description" id="editGroupDescription" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Sub-Group Modal -->
+<div class="modal fade" id="createSubgroupModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-info text-white">
+                <h6 class="modal-title"><i class="fas fa-folder-plus me-2"></i>New Sub-Group</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_batch_subgroup_route') }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="group_id" id="createSubgroupParentId">
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Parent Group</label>
+                        <input type="text" id="createSubgroupParentName" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Sub-Group Name *</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g., EPGP-1, Section A" required>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Description</label>
+                        <input type="text" name="description" class="form-control" placeholder="Optional description">
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info btn-sm"><i class="fas fa-plus me-1"></i>Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Sub-Group Modal -->
+<div class="modal fade" id="editSubgroupModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Sub-Group</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editSubgroupForm" method="POST">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Sub-Group Name *</label>
+                        <input type="text" name="name" id="editSubgroupName" class="form-control" required>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Description</label>
+                        <input type="text" name="description" id="editSubgroupDescription" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign User to Groups Modal -->
+<div class="modal fade" id="assignUserGroupsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-info text-white">
+                <h6 class="modal-title"><i class="fas fa-user-cog me-2"></i>Assign User to Groups</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_user_groups_route') }}">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Select a user and choose which groups they should have access to. Users will only see batches in their assigned groups.
+                    </p>
+                    
+                    <!-- User Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select User</label>
+                        <select name="user_email" id="assignUserSelect" class="form-select" required onchange="loadUserGroups(this.value)">
+                            <option value="">-- Select a user --</option>
+                            {% for u in all_users %}
+                                {% if u.role not in ['superadmin', 'admin'] %}
+                                <option value="{{ u.email }}">{{ u.email }}{% if u.first_name or u.last_name %} ({{ u.first_name or '' }} {{ u.last_name or '' }}){% endif %}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Note: Superadmins and Admins automatically have access to all groups</small>
+                    </div>
+                    
+                    <!-- Groups Selection -->
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Assign to Groups</label>
+                        <div id="userGroupsLoading" class="text-center py-3 text-muted" style="display: none;">
+                            <i class="fas fa-spinner fa-spin me-2"></i>Loading current groups...
+                        </div>
+                        <div id="groupCheckboxes" class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
+                            {% if groups %}
+                                {% for g in groups %}
+                                <div class="form-check py-1 border-bottom">
+                                    <input class="form-check-input user-group-checkbox" type="checkbox" name="group_ids" value="{{ g.id }}" id="userGroup{{ g.id }}">
+                                    <label class="form-check-label d-flex justify-content-between w-100" for="userGroup{{ g.id }}">
+                                        <span><i class="fas fa-folder me-2 text-warning"></i>{{ g.name }}</span>
+                                        <span class="badge bg-secondary">{{ group_batch_counts.get(g.id, 0) }} batches</span>
+                                    </label>
+                                    {% if g.description %}
+                                    <small class="text-muted d-block ms-4">{{ g.description }}</small>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted text-center mb-0 py-3">
+                                    <i class="fas fa-folder-open me-2"></i>No groups created yet. Create groups first.
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    {% if groups %}
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllUserGroups()">
+                            <i class="fas fa-check-double me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAllUserGroups()">
+                            <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info btn-sm" {% if not groups %}disabled{% endif %}>
+                        <i class="fas fa-save me-1"></i>Save Assignment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Move Batches Modal -->
+<div class="modal fade" id="moveBatchesModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-folder me-2"></i>Move Batches to Group / Sub-group</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="moveBatchesForm" method="POST" action="{{ url_for('bulk_move_batches_to_group') }}">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Move <strong id="moveBatchCount">0</strong> selected batch(es) to:</p>
+                    <select name="destination" class="form-select" required>
+                        <option value="ungrouped">Ungrouped</option>
+                        {% for g in groups %}
+                        <option value="group-{{ g.id }}">{{ g.name }}</option>
+                            {% for sg in subgroups %}
+                                {% if sg.group_id == g.id %}
+                        <option value="subgroup-{{ sg.id }}">&nbsp;&nbsp;&nbsp;&nbsp;↳ {{ g.name }} / {{ sg.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="batch_ids" id="moveBatchIds">
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-folder me-1"></i>Move</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Set Duration Modal -->
+<div class="modal fade" id="setDurationModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-clock me-2"></i>Set Required Duration</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="setDurationForm" method="POST" action="{{ url_for('bulk_set_duration_batches') }}">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Set the required attendance duration for <strong id="durationBatchCount">0</strong> selected batch(es):</p>
+                    <div class="input-group input-group-sm">
+                        <input type="number" name="required_duration_minutes" class="form-control" min="1" step="1" placeholder="e.g. 60" required autofocus>
+                        <span class="input-group-text">minutes</span>
+                    </div>
+                    <input type="hidden" name="batch_ids" id="durationBatchIds">
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-clock me-1"></i>Set Duration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Import/Export Modal -->
+<div class="modal fade" id="importExportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Import / Export</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4 pb-3 border-bottom">
+                    <h6><i class="fas fa-upload me-2 text-primary"></i>Import Batches</h6>
+                    <form method="POST" action="{{ url_for('upload_batches_bulk') }}" enctype="multipart/form-data">
+                        {{ csrf_field() }}
+                        <div class="mb-2">
+                            <input type="file" name="batches_file" accept=".csv,.xlsx,.xls" class="form-control" required>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="replace_bulk" name="replace">
+                                <label class="form-check-label" for="replace_bulk" style="font-size: 0.85rem;">
+                                    Replace existing batches
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-1"></i>Upload
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div>
+                    <h6><i class="fas fa-download me-2 text-success"></i>Export</h6>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('download_batches_bulk_template') }}" class="btn btn-outline-secondary flex-grow-1">
+                            <i class="fas fa-file-download me-1"></i>Download Template
+                        </a>
+                        {% if batches %}
+                        <a href="{{ url_for('download_all_batches_students') }}" class="btn btn-success flex-grow-1">
+                            <i class="fas fa-file-export me-1"></i>Export All Batches
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Batch Modal -->
+<div id="editBatchModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Batch</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editBatchForm" method="POST">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Batch Name</label>
+                        <input type="text" name="name" id="editBatchName" class="form-control" required>
+                    </div>
+                    <div>
+                        <label class="form-label small">Required Duration (minutes)</label>
+                        <input type="number" name="required_duration_minutes" id="editBatchDuration" class="form-control" min="0.1" step="0.1" placeholder="Automatic from filename">
+                        <small class="text-muted">Leave blank to use filename-based detection.</small>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div id="editStudentModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fas fa-user-edit me-2"></i>Edit Student</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editStudentForm" method="POST">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Name</label>
+                        <input type="text" name="name" id="editStudentName" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Email</label>
+                        <input type="email" name="email" id="editStudentEmail" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Institute Email <span class="text-muted">(optional)</span></label>
+                        <input type="email" name="institute_email" id="editStudentInstituteEmail" class="form-control">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Contact Number <span class="text-muted">(optional)</span></label>
+                        <input type="text" name="contact_number" id="editStudentContactNumber" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add to Exclusion/Block Modal -->
+<div id="exclusionModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="exclusionModalTitle"><i class="fas fa-user-slash me-2"></i>Add to Exclusion</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_excluded') }}" id="exclusionForm">
+                {{ csrf_field() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Identifier</label>
+                        <input type="text" name="identifier" id="exclusionIdentifier" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Type</label>
+                        <select name="identifier_type" id="exclusionType" class="form-select">
+                            <option value="name">Name</option>
+                            <option value="email">Email</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_permanently_blocked" id="exclusionPermanent" value="1">
+                        <label class="form-check-label" for="exclusionPermanent">
+                            <strong>Permanent Block</strong>
+                            <br><small class="text-muted">Won't appear in Sheet1 or attendance</small>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-user-slash me-1"></i>Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// State Management
+let currentGroupId = null;
+let currentSubgroupId = null;
+let activeTab = 'active'; // 'active' or 'completed'
+
+// All students data for global search
+const allStudents = [
+    {% for b in batches + completed_batches %}
+        {% for s in batch_students.get(b.id, []) %}
+        {
+            id: {{ s.id }},
+            name: {{ s.name | tojson }},
+            email: {{ s.email | tojson }},
+            batchId: {{ b.id }},
+            batchName: {{ b.name | tojson }}
+        },
+        {% endfor %}
+    {% endfor %}
+];
+
+// Switch Active vs Completed tabs
+function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab-container .nav-link').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(tab + '-batches-tab').classList.add('active');
+    
+    // Toggle bulk action buttons
+    if (tab === 'active') {
+        document.getElementById('bulkCompleteBtn').style.display = '';
+        document.getElementById('bulkRestoreBtn').style.display = 'none';
+    } else {
+        document.getElementById('bulkCompleteBtn').style.display = 'none';
+        document.getElementById('bulkRestoreBtn').style.display = '';
+    }
+
+    // Reset selection checkboxes
+    document.getElementById('selectAllBatches').checked = false;
+    document.querySelectorAll('.batch-checkbox').forEach(cb => cb.checked = false);
+    updateBatchSelection();
+    
+    filterBatches();
+}
+
+// Group Selection
+function selectGroup(groupId) {
+    currentGroupId = groupId;
+    currentSubgroupId = null;
+    
+    // Update active state in group list
+    document.querySelectorAll('.group-item, .subgroup-item').forEach(item => item.classList.remove('active'));
+    const groupTargetId = groupId === null ? 'all' : groupId;
+    const groupItem = document.querySelector(`.group-item[data-group-id="${groupTargetId}"]`);
+    if (groupItem) groupItem.classList.add('active');
+    
+    // Update title
+    const titleEl = document.getElementById('batchListTitle');
+    if (groupId === 0) {
+        titleEl.textContent = 'Ungrouped Batches';
+    } else if (groupId === null) {
+        titleEl.textContent = 'All Batches';
+    } else {
+        const groupName = groupItem ? groupItem.querySelector('.group-name span').textContent.trim() : 'Group';
+        titleEl.textContent = groupName;
+    }
+
+    filterBatches();
+}
+
+// Sub-Group Selection
+function selectSubgroup(subgroupId) {
+    currentSubgroupId = subgroupId;
+    
+    // Update active state in group/subgroup list
+    document.querySelectorAll('.group-item, .subgroup-item').forEach(item => item.classList.remove('active'));
+    const subgroupItem = document.querySelector(`.subgroup-item[data-subgroup-id="${subgroupId}"]`);
+    if (subgroupItem) subgroupItem.classList.add('active');
+    
+    // Update title
+    const titleEl = document.getElementById('batchListTitle');
+    const subgroupName = subgroupItem ? subgroupItem.querySelector('span').textContent.trim() : 'Sub-Group';
+    titleEl.textContent = subgroupName;
+
+    filterBatches();
+}
+
+// Hierarchical and Tab Filtering of Batches
+function filterBatches() {
+    const query = document.getElementById('batchSearch').value.toLowerCase();
+    let firstVisibleBatchId = null;
+    let currentSelectedBatchIsVisible = false;
+    let currentSelectedBatchId = null;
+    
+    // Find the currently active batch ID
+    const activeBatchItem = document.querySelector('.batch-item.active');
+    if (activeBatchItem) {
+        currentSelectedBatchId = activeBatchItem.dataset.batchId;
+    }
+    
+    document.querySelectorAll('.batch-item').forEach(item => {
+        const name = item.dataset.batchName;
+        const batchGroupId = parseInt(item.dataset.groupId) || 0;
+        const batchSubgroupId = parseInt(item.dataset.subgroupId) || 0;
+        const batchId = item.dataset.batchId;
+        
+        const matchesSearch = name.includes(query);
+        
+        // Tab check
+        const isActiveBatch = item.classList.contains('active-batch-item');
+        const isCompletedBatch = item.classList.contains('completed-batch-item');
+        const matchesTab = (activeTab === 'active' && isActiveBatch) || (activeTab === 'completed' && isCompletedBatch);
+        
+        // Group/Subgroup check
+        let matchesHierarchy = false;
+        if (currentSubgroupId !== null) {
+            // Subgroup view: only batches belonging to this subgroup
+            matchesHierarchy = (batchSubgroupId === currentSubgroupId);
+        } else if (currentGroupId !== null) {
+            // Group view: only batches directly under the group (no subgroup assigned)
+            matchesHierarchy = (batchGroupId === currentGroupId) && (batchSubgroupId === 0);
+        } else {
+            // No group/subgroup filter: show all batches
+            matchesHierarchy = true;
+        }
+        
+        if (matchesSearch && matchesTab && matchesHierarchy) {
+            item.style.display = '';
+            if (!firstVisibleBatchId) {
+                firstVisibleBatchId = batchId;
+            }
+            if (batchId === currentSelectedBatchId) {
+                currentSelectedBatchIsVisible = true;
+            }
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    // If the currently selected batch is no longer visible, or if no batch is selected,
+    // select the first visible batch.
+    if (!currentSelectedBatchIsVisible || !currentSelectedBatchId) {
+        if (firstVisibleBatchId) {
+            selectBatch(firstVisibleBatchId);
+        } else {
+            // Hide all panels and show "No batch selected"
+            document.querySelectorAll('.batch-panel').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.batch-item').forEach(t => t.classList.remove('active'));
+            const noSelect = document.getElementById('no-batch-selected');
+            if (noSelect) noSelect.style.display = 'flex';
+        }
+    }
+}
+
+// Complete Batch Action
+function completeBatch(batchId, batchName) {
+    showConfirm(`Mark batch "${batchName}" as Completed? It will be archived and excluded from Smart Matcher.`, () => {
+        postForm('/admin/batches/' + batchId + '/complete');
+    });
+}
+
+// Restore Batch Action
+function restoreBatch(batchId, batchName) {
+    showConfirm(`Restore batch "${batchName}" to Active status?`, () => {
+        postForm('/admin/batches/' + batchId + '/restore');
+    });
+}
+
+// Bulk Complete Batches Action
+function bulkCompleteBatches() {
+    const ids = Array.from(document.querySelectorAll('.batch-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+    showConfirm(`Mark ${ids.length} batch(es) as Completed?`, () => {
+        postForm('{{ url_for("bulk_complete_batches") }}', { batch_ids: ids.join(',') });
+    });
+}
+
+// Bulk Restore Batches Action
+function bulkRestoreBatches() {
+    const ids = Array.from(document.querySelectorAll('.batch-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+    showConfirm(`Restore ${ids.length} batch(es) to Active status?`, () => {
+        postForm('{{ url_for("bulk_restore_batches") }}', { batch_ids: ids.join(',') });
+    });
+}
+
+// Complete Subgroup Action
+function completeSubgroup(subgroupId, subgroupName) {
+    showConfirm(`Mark sub-group "${subgroupName}" as Completed? It (and its batches) will be excluded from Smart Matcher.`, () => {
+        postForm('/admin/subgroups/' + subgroupId + '/complete');
+    });
+}
+
+// Restore Subgroup Action
+function restoreSubgroup(subgroupId, subgroupName) {
+    showConfirm(`Restore sub-group "${subgroupName}" to Active status?`, () => {
+        postForm('/admin/subgroups/' + subgroupId + '/restore');
+    });
+}
+
+// Create Subgroup Pop-up Modal Helper
+function createSubgroup(groupId, groupName) {
+    document.getElementById('createSubgroupParentId').value = groupId;
+    document.getElementById('createSubgroupParentName').value = groupName;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('createSubgroupModal')).show();
+}
+
+// Edit Subgroup Pop-up Modal Helper
+function editSubgroup(subgroupId, name, description) {
+    document.getElementById('editSubgroupForm').action = '/admin/subgroups/' + subgroupId + '/edit';
+    document.getElementById('editSubgroupName').value = name;
+    document.getElementById('editSubgroupDescription').value = description;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editSubgroupModal')).show();
+}
+
+// Edit Group
+function editGroup(groupId, name, description) {
+    document.getElementById('editGroupForm').action = '/admin/batch_groups/' + groupId + '/edit';
+    document.getElementById('editGroupName').value = name;
+    document.getElementById('editGroupDescription').value = description;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editGroupModal')).show();
+}
+
+// Manage Group Users
+let currentGroupForUsers = null;
+function manageGroupUsers(groupId, name) {
+    currentGroupForUsers = groupId;
+    document.getElementById('groupUsersTitle').textContent = name;
+    document.getElementById('addUserToGroupForm').action = '/admin/batch_groups/' + groupId + '/grant_access';
+    
+    // Load current users
+    loadGroupUsers(groupId);
+    
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('groupUsersModal')).show();
+}
+
+function loadGroupUsers(groupId) {
+    const listEl = document.getElementById('groupUsersList');
+    listEl.innerHTML = '<p class="text-center text-muted mb-0">Loading...</p>';
+    
+    fetch('/admin/batch_groups/' + groupId + '/users')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.users.length > 0) {
+                listEl.innerHTML = data.users.map(u => `
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <span>${u.email}</span>
+                        <form method="POST" action="/admin/batch_groups/${groupId}/revoke_access" class="d-inline" data-confirm="Revoke access?">
+                            {{ csrf_field() }}
+                            <input type="hidden" name="user_email" value="${u.email}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </form>
+                    </div>
+                `).join('');
+            } else {
+                listEl.innerHTML = '<p class="text-center text-muted mb-0">No users assigned</p>';
+            }
+        })
+        .catch(err => {
+            listEl.innerHTML = '<p class="text-center text-danger mb-0">Error loading users</p>';
+        });
+}
+
+// Load user's current group assignments
+function loadUserGroups(userEmail) {
+    // Clear all checkboxes first
+    document.querySelectorAll('.user-group-checkbox').forEach(cb => cb.checked = false);
+    
+    if (!userEmail) return;
+    
+    const loadingEl = document.getElementById('userGroupsLoading');
+    loadingEl.style.display = 'block';
+    
+    fetch('/admin/user_groups/' + encodeURIComponent(userEmail))
+        .then(r => r.json())
+        .then(data => {
+            loadingEl.style.display = 'none';
+            if (data.success) {
+                // Check the boxes for groups user has access to
+                data.group_ids.forEach(gid => {
+                    const checkbox = document.getElementById('userGroup' + gid);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+        })
+        .catch(err => {
+            loadingEl.style.display = 'none';
+            console.error('Error loading user groups:', err);
+        });
+}
+
+function selectAllUserGroups() {
+    document.querySelectorAll('.user-group-checkbox').forEach(cb => cb.checked = true);
+}
+
+function deselectAllUserGroups() {
+    document.querySelectorAll('.user-group-checkbox').forEach(cb => cb.checked = false);
+}
+
+// Reset modal when closed
+document.getElementById('assignUserGroupsModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('assignUserSelect').value = '';
+    document.querySelectorAll('.user-group-checkbox').forEach(cb => cb.checked = false);
+});
+
+// Bulk Move Batches
+function bulkMoveBatches() {
+    const ids = Array.from(document.querySelectorAll('.batch-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+
+    document.getElementById('moveBatchIds').value = ids.join(',');
+    document.getElementById('moveBatchCount').textContent = ids.length;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('moveBatchesModal')).show();
+}
+
+// Bulk Set Duration
+function bulkSetDuration() {
+    const ids = Array.from(document.querySelectorAll('.batch-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+
+    document.getElementById('durationBatchIds').value = ids.join(',');
+    document.getElementById('durationBatchCount').textContent = ids.length;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('setDurationModal')).show();
+}
+
+// Global Student Search
+const globalSearchInput = document.getElementById('globalStudentSearch');
+const globalSearchResults = document.getElementById('globalSearchResults');
+const searchResultsBody = document.getElementById('searchResultsBody');
+const searchResultCount = document.getElementById('searchResultCount');
+const clearSearchBtn = document.getElementById('clearGlobalSearch');
+
+globalSearchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    if (query.length < 2) {
+        globalSearchResults.classList.remove('active');
+        clearSearchBtn.style.display = 'none';
+        return;
+    }
+    
+    clearSearchBtn.style.display = 'block';
+    
+    const results = allStudents.filter(s => 
+        s.name.toLowerCase().includes(query) || 
+        s.email.toLowerCase().includes(query)
+    );
+    
+    results.sort((a, b) => {
+        const aNameStart = a.name.toLowerCase().startsWith(query) ? 0 : 1;
+        const bNameStart = b.name.toLowerCase().startsWith(query) ? 0 : 1;
+        return aNameStart - bNameStart;
+    });
+    
+    const limitedResults = results.slice(0, 50);
+    searchResultCount.textContent = results.length;
+    
+    if (limitedResults.length === 0) {
+        searchResultsBody.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-search fa-2x mb-2 opacity-50"></i>
+                <p>No students found matching "${query}"</p>
+            </div>
+        `;
+    } else {
+        searchResultsBody.innerHTML = limitedResults.map(s => {
+            const highlightedName = highlightMatch(s.name, query);
+            const highlightedEmail = highlightMatch(s.email, query);
+            
+            return `
+                <div class="search-result-item">
+                    <div class="search-result-info">
+                        <div class="search-result-name">${highlightedName}</div>
+                        <div class="search-result-email">${highlightedEmail}</div>
+                        <span class="search-result-batch"><i class="fas fa-users me-1"></i>${escapeHtml(s.batchName)}</span>
+                    </div>
+                    <div class="search-result-actions">
+                        <button class="btn btn-outline-primary btn-sm" onclick="goToBatchStudent(${s.batchId}, ${s.id})" title="Go to Batch">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="addToExclusion('${escapeHtml(s.name)}', 'name')" title="Add to Exclusion">
+                            <i class="fas fa-user-slash"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="addToBlock('${escapeHtml(s.email)}', 'email')" title="Permanent Block">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    globalSearchResults.classList.add('active');
+});
+
+function highlightMatch(text, query) {
+    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    return escapeHtml(text).replace(regex, '<span class="search-highlight">$1</span>');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function closeGlobalSearch() {
+    globalSearchResults.classList.remove('active');
+    globalSearchInput.value = '';
+    clearSearchBtn.style.display = 'none';
+}
+
+clearSearchBtn.addEventListener('click', closeGlobalSearch);
+
+function goToBatchStudent(batchId, studentId) {
+    closeGlobalSearch();
+    selectGroup(null); // Show all batches
+    
+    // Check if the student is in a completed batch
+    const activeBatchItem = document.querySelector(`.active-batch-item[data-batch-id="${batchId}"]`);
+    const completedBatchItem = document.querySelector(`.completed-batch-item[data-batch-id="${batchId}"]`);
+    
+    if (completedBatchItem && !activeBatchItem) {
+        switchTab('completed');
+    } else {
+        switchTab('active');
+    }
+    
+    selectBatch(batchId);
+    
+    setTimeout(() => {
+        const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.style.background = 'rgba(99, 102, 241, 0.3)';
+            setTimeout(() => { row.style.background = ''; }, 2000);
+        }
+    }, 100);
+}
+
+// Batch Selection
+function selectBatch(batchId) {
+    if (!batchId) return;
+
+    // Remove active class from all batch tiles
+    document.querySelectorAll('.batch-item').forEach(t => t.classList.remove('active'));
+    
+    // Add active class to selected batch tile
+    const tile = document.querySelector('.batch-item[data-batch-id="' + batchId + '"]');
+    if (tile) tile.classList.add('active');
+    
+    // Hide empty state
+    const noSelect = document.getElementById('no-batch-selected');
+    if (noSelect) noSelect.style.display = 'none';
+    
+    // Show loader, hide content
+    const loader = document.getElementById('batch-details-loader');
+    const content = document.getElementById('batch-details-content');
+    
+    if (loader) loader.style.display = 'flex';
+    if (content) {
+        content.style.display = 'none';
+        content.innerHTML = '';
+    }
+    
+    // Fetch batch details via AJAX
+    fetch(`/admin/batches/${batchId}/details`)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to load batch details');
+            return response.text();
+        })
+        .then(html => {
+            if (loader) loader.style.display = 'none';
+            if (content) {
+                content.innerHTML = html;
+                content.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            if (loader) loader.style.display = 'none';
+            if (content) {
+                content.innerHTML = `<div class="alert alert-danger m-4">Error loading batch details. Please try refreshing the page.</div>`;
+                content.style.display = 'block';
+            }
+        });
+}
+
+// Search Batches Input
+document.getElementById('batchSearch').addEventListener('input', filterBatches);
+
+// Exclusion Functions
+function addToExclusion(identifier, type) {
+    document.getElementById('exclusionIdentifier').value = identifier;
+    document.getElementById('exclusionType').value = type;
+    document.getElementById('exclusionPermanent').checked = false;
+    document.getElementById('exclusionModalTitle').innerHTML = '<i class="fas fa-user-slash me-2"></i>Add to Exclusion';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('exclusionModal')).show();
+}
+
+function addToBlock(identifier, type) {
+    document.getElementById('exclusionIdentifier').value = identifier;
+    document.getElementById('exclusionType').value = type;
+    document.getElementById('exclusionPermanent').checked = true;
+    document.getElementById('exclusionModalTitle').innerHTML = '<i class="fas fa-ban me-2"></i>Permanent Block';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('exclusionModal')).show();
+}
+
+function bulkAddToExclusion(batchId) {
+    const ids = Array.from(document.querySelectorAll(`#students-tbody-${batchId} .student-checkbox:checked`)).map(cb => cb.value);
+    const names = Array.from(document.querySelectorAll(`#students-tbody-${batchId} .student-checkbox:checked`)).map(cb => cb.dataset.name);
+    
+    if (ids.length === 0) return;
+    
+    showConfirm(`Add ${names.length} student(s) to exclusion list?`, () => {
+        postForm('{{ url_for("add_excluded") }}', { 'student_ids[]': ids });
+    });
+}
+
+function bulkAddToBlock(batchId) {
+    const emails = Array.from(document.querySelectorAll(`#students-tbody-${batchId} .student-checkbox:checked`)).map(cb => cb.dataset.email).filter(e => e);
+    
+    if (emails.length === 0) {
+        alert('No students selected or missing email addresses.');
+        return;
+    }
+    
+    showConfirm(`Permanently block ${emails.length} student(s)?`, () => {
+        postForm('{{ url_for("add_excluded") }}', {
+            'emails[]': emails,
+            'is_permanently_blocked': '1'
+        });
+    });
+}
+
+// Selection Functions
+function toggleAllBatches(checkbox) {
+    document.querySelectorAll('.batch-checkbox').forEach(cb => {
+        if (cb.closest('.batch-item').style.display !== 'none') {
+            cb.checked = checkbox.checked;
+        }
+    });
+    updateBatchSelection();
+}
+
+function updateBatchSelection() {
+    const checked = document.querySelectorAll('.batch-checkbox:checked').length;
+    const bulkBar = document.getElementById('batchBulkActions');
+    document.getElementById('selectedBatchCount').textContent = checked;
+    
+    if (checked > 0) {
+        bulkBar.classList.add('visible');
+    } else {
+        bulkBar.classList.remove('visible');
+    }
+}
+
+// Bulk Delete Action
+function bulkDeleteBatches() {
+    const ids = Array.from(document.querySelectorAll('.batch-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+    showConfirm(`Delete ${ids.length} batch(es) and all students inside them?`, () => {
+        postForm('{{ url_for("delete_selected_batches_route") }}', { batch_ids: ids.join(',') });
+    });
+}
+
+function toggleAllStudents(checkbox, batchId) {
+    document.querySelectorAll(`#students-tbody-${batchId} .student-checkbox`).forEach(cb => {
+        const row = cb.closest('tr');
+        if (row.style.display !== 'none') {
+            cb.checked = checkbox.checked;
+        }
+    });
+    updateStudentSelection(batchId);
+}
+
+function updateStudentSelection(batchId) {
+    const checked = document.querySelectorAll(`#students-tbody-${batchId} .student-checkbox:checked`).length;
+    const countEl = document.getElementById('selected-count-' + batchId);
+    const bulkBar = document.getElementById('student-bulk-actions-' + batchId);
+    
+    if (countEl) countEl.textContent = checked;
+    
+    if (checked > 0) {
+        bulkBar.classList.add('visible');
+    } else {
+        bulkBar.classList.remove('visible');
+    }
+}
+
+// Batch Student Deletion Helper
+function bulkDeleteStudents(batchId) {
+    const ids = Array.from(document.querySelectorAll(`#students-tbody-${batchId} .student-checkbox:checked`)).map(cb => cb.value);
+    if (ids.length === 0) return;
+    showConfirm(`Delete ${ids.length} student(s)?`, () => {
+        postForm(`/admin/batches/${batchId}/students/delete_selected`, { student_ids: ids.join(',') });
+    });
+}
+
+// Edit Functions
+function editBatchName(batchId, currentName, currentDuration) {
+    const form = document.getElementById('editBatchForm');
+    form.action = '/admin/batches/' + batchId + '/edit';
+    document.getElementById('editBatchName').value = currentName;
+    document.getElementById('editBatchDuration').value = currentDuration || '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editBatchModal')).show();
+}
+
+function editStudent(studentId, batchId, name, email, instituteEmail, contactNumber) {
+    const form = document.getElementById('editStudentForm');
+    form.action = '/admin/batches/' + batchId + '/students/' + studentId + '/edit';
+    document.getElementById('editStudentName').value = name;
+    document.getElementById('editStudentEmail').value = email;
+    document.getElementById('editStudentInstituteEmail').value = instituteEmail || '';
+    document.getElementById('editStudentContactNumber').value = contactNumber || '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editStudentModal')).show();
+}
+
+// Global Generic Confirm Logic
+let pendingConfirmForm = null;
+let pendingConfirmCallback = null;
+
+function showConfirm(message, formOrCallback) {
+    document.getElementById('genericConfirmMessage').innerText = message;
+    
+    if (typeof formOrCallback === 'function') {
+        pendingConfirmForm = null;
+        pendingConfirmCallback = formOrCallback;
+    } else {
+        pendingConfirmForm = formOrCallback;
+        pendingConfirmCallback = null;
+    }
+    
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('genericConfirmModal'));
+    modal.show();
+}
+
+document.getElementById('genericConfirmBtn').addEventListener('click', function() {
+    if (pendingConfirmForm) {
+        pendingConfirmForm.submit();
+    } else if (pendingConfirmCallback) {
+        pendingConfirmCallback();
+    }
+    bootstrap.Modal.getInstance(document.getElementById('genericConfirmModal')).hide();
+});
+
+// Intercept form submissions with data-confirm
+document.addEventListener('submit', function(e) {
+    if (e.target && e.target.hasAttribute('data-confirm')) {
+        e.preventDefault();
+        const msg = e.target.getAttribute('data-confirm');
+        e.target.removeAttribute('data-confirm'); // prevent loop
+        showConfirm(msg, e.target);
+        
+        // Restore attribute in case they cancel
+        document.getElementById('genericConfirmModal').addEventListener('hidden.bs.modal', function onHide() {
+            e.target.setAttribute('data-confirm', msg);
+            document.getElementById('genericConfirmModal').removeEventListener('hidden.bs.modal', onHide);
+        });
+    }
+});
+
+// Auto-select first batch if none selected on startup
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial filter run to show active batches
+    filterBatches();
+    
+    {% if selected_batch %}
+    // Re-open the panel for the batch a redirect (add/edit/delete student, etc.) just returned us to.
+    {% if selected_batch.is_completed %}switchTab('completed');{% endif %}
+    selectBatch({{ selected_batch.id }});
+    {% elif batches %}
+    selectBatch({{ batches[0].id }});
+    {% elif completed_batches %}
+    // If no active batches but completed exist, select first completed
+    switchTab('completed');
+    selectBatch({{ completed_batches[0].id }});
+    {% endif %}
+});
+</script>
+{% endblock %}

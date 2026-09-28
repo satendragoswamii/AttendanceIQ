@@ -1,0 +1,114 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Subject Templates - Tango{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('tango.static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "_tango_nav.html" %}
+
+<div class="tg-page-header">
+    <h2><i class="fas fa-heading me-2"></i>Subject Templates</h2>
+    <p>Create and manage custom subject lines. Pick which one to use each time you generate invites.</p>
+</div>
+
+<div class="tg-grid tg-grid-2col">
+    <div class="tg-card">
+        <h2 class="tg-card-title" id="formTitle"><i class="fas fa-user-plus"></i>Add New Subject Template</h2>
+        <form method="POST" action="{{ url_for('tango.subject_lines_add') }}" id="subjectTemplateForm">
+            {{ csrf_field() }}
+            <div class="mb-2">
+                <label for="subjectTemplateName" class="form-label mb-1">Template Name</label>
+                <input type="text" name="name" id="subjectTemplateName" class="form-control form-control-sm" placeholder="e.g. Reminder Subject" required>
+            </div>
+            <div class="mb-2">
+                <label for="subjectTemplateBody" class="form-label mb-1">Subject Line</label>
+                <input type="text" name="body" id="subjectTemplateBody" class="form-control form-control-sm" placeholder="{date} | Session Link_{prefix}_{programme}_{topic}" required>
+                <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.5rem; line-height:1.6;">
+                    Available placeholders:
+                    <code>{date}</code> <code>{prefix}</code> <code>{programme}</code>
+                    <code>{topic}</code> <code>{day}</code> <code>{faculty_name}</code>
+                </p>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" id="subjectTemplateSubmitBtn">Create Subject Template</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="cancelEditBtn" style="display:none;" onclick="resetSubjectTemplateForm()">Cancel Edit</button>
+        </form>
+    </div>
+
+    <div class="tg-card">
+        <h2 class="tg-card-title"><i class="fas fa-heading"></i>Saved Subject Templates ({{ subject_templates|length }})</h2>
+        {% for t in subject_templates %}
+        <div class="tg-tpl-item">
+            <div class="tg-tpl-header">
+                <strong>{{ t.name }}</strong>
+                {% if t.is_default %}<span class="badge bg-success">Default</span>{% endif %}
+            </div>
+            <pre class="tg-preview-email" style="max-height:none; white-space:pre-wrap;">{{ t.body }}</pre>
+            <div class="tg-tpl-actions">
+                <button type="button" class="btn btn-sm btn-outline-info" onclick='previewTemplate({{ t.name|tojson }}, {{ t.body|tojson }})'>Preview</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick='editSubjectTemplate({{ t.id }}, {{ t.name|tojson }}, {{ t.body|tojson }})'>Edit</button>
+                {% if not t.is_default %}
+                <form method="POST" action="{{ url_for('tango.subject_lines_set_default', template_id=t.id) }}">
+                    {{ csrf_field() }}
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Set Default</button>
+                </form>
+                <form method="POST" action="{{ url_for('tango.subject_lines_delete', template_id=t.id) }}" onsubmit="return confirm('Delete this subject template?');">
+                    {{ csrf_field() }}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Subject Template Preview Modal -->
+<div class="modal fade" id="templatePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom-color: var(--border-color);">
+                <h5 class="modal-title" id="templatePreviewTitle">Subject Template Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="templatePreviewBody" class="tg-preview-email" style="max-height: 60vh; white-space: pre-wrap;"></pre>
+            </div>
+            <div class="modal-footer" style="border-top-color: var(--border-color);">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function previewTemplate(name, body) {
+        document.getElementById('templatePreviewTitle').textContent = name;
+        document.getElementById('templatePreviewBody').textContent = body;
+        new bootstrap.Modal(document.getElementById('templatePreviewModal')).show();
+    }
+
+    function editSubjectTemplate(id, name, body) {
+        document.getElementById('subjectTemplateForm').action = '/tango/subject-lines/edit/' + id;
+        document.getElementById('subjectTemplateName').value = name;
+        document.getElementById('subjectTemplateBody').value = body;
+        document.getElementById('formTitle').lastChild.textContent = ' Edit Subject Template';
+        document.getElementById('subjectTemplateSubmitBtn').textContent = 'Update Subject Template';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetSubjectTemplateForm() {
+        document.getElementById('subjectTemplateForm').action = '/tango/subject-lines/add';
+        document.getElementById('subjectTemplateName').value = '';
+        document.getElementById('subjectTemplateBody').value = '';
+        document.getElementById('formTitle').lastChild.textContent = ' Add New Subject Template';
+        document.getElementById('subjectTemplateSubmitBtn').textContent = 'Create Subject Template';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+</script>
+{% endblock %}

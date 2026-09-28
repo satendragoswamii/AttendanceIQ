@@ -1,0 +1,36 @@
+/* ========================================================================
+   SOFT REVEAL - content fades and lifts into place as it enters the viewport
+   Driven by static/js/soft-reveal.js. Everything here is gated on
+   html.js-reveal, which the head snippet in base_comprehensive.html only adds
+   when JavaScript is running and the visitor has not asked for reduced motion.
+
+   The hidden-state selector list below must stay in step with REVEAL_SELECTOR
+   in soft-reveal.js: anything hidden here has to be something the script will
+   reveal. Pages that bring their own entrance animation (the premium home's
+   .ph-page, the landing page's .pl-doc) and live regions (modals, the split
+   view's injected tool forms) are excluded on both sides.
+   ======================================================================== */
+
+html.js-reveal .main-content .reveal-target {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+html.js-reveal .main-content .reveal-target.is-revealed {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+/* Safety net: if the script never runs, the class comes off the root and
+   every element is simply visible with no animation. */
+@media (prefers-reduced-motion: reduce) {
+  html.js-reveal .main-content .reveal-target {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

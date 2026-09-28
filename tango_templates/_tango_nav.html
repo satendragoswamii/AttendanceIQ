@@ -1,0 +1,110 @@
+<style>
+.tg-page-header {
+    background: linear-gradient(135deg, var(--primary-accent) 0%, var(--secondary-accent) 100%);
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 0.85rem;
+    color: white;
+}
+
+.tg-page-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.tg-page-header p {
+    margin: 0.2rem 0 0 0;
+    opacity: 0.9;
+    font-size: 0.8rem;
+}
+
+.tg-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 0.85rem;
+}
+
+.tg-action-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.55rem 0.5rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    flex: 0 0 auto;
+    width: 120px;
+}
+
+.tg-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-color: var(--primary-accent);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.tg-action-btn.active {
+    border-color: var(--primary-accent);
+    box-shadow: var(--shadow-glow);
+}
+
+.tg-action-btn .tg-action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+}
+
+.tg-action-btn .tg-action-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.bg-gradient-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.bg-gradient-success { background: linear-gradient(135deg, #10b981, #34d399); }
+.bg-gradient-warning { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.bg-gradient-info { background: linear-gradient(135deg, #0ea5e9, #38bdf8); }
+.bg-gradient-danger { background: linear-gradient(135deg, #ef4444, #f87171); }
+.bg-gradient-purple { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+
+@media (max-width: 576px) {
+    .tg-action-btn { width: calc(50% - 0.4rem); }
+}
+</style>
+
+<div class="tg-quick-actions">
+    <a href="{{ url_for('tango.tango_home') }}" class="tg-action-btn {{ 'active' if request.endpoint == 'tango.tango_home' }}">
+        <div class="tg-action-icon bg-gradient-primary"><i class="fas fa-calendar-check"></i></div>
+        <span class="tg-action-label">Generate Invites</span>
+    </a>
+    <a href="{{ url_for('tango.emails_list') }}" class="tg-action-btn {{ 'active' if request.endpoint == 'tango.emails_list' }}">
+        <div class="tg-action-icon bg-gradient-info"><i class="fas fa-address-book"></i></div>
+        <span class="tg-action-label">Email Directory</span>
+    </a>
+    <a href="{{ url_for('tango.templates_list') }}" class="tg-action-btn {{ 'active' if request.endpoint == 'tango.templates_list' }}">
+        <div class="tg-action-icon bg-gradient-success"><i class="fas fa-file-alt"></i></div>
+        <span class="tg-action-label">Email Templates</span>
+    </a>
+    <a href="{{ url_for('tango.subject_lines_list') }}" class="tg-action-btn {{ 'active' if request.endpoint == 'tango.subject_lines_list' }}">
+        <div class="tg-action-icon bg-gradient-warning"><i class="fas fa-heading"></i></div>
+        <span class="tg-action-label">Subject Templates</span>
+    </a>
+    <a href="{{ url_for('tango.history') }}" class="tg-action-btn {{ 'active' if request.endpoint == 'tango.history' }}">
+        <div class="tg-action-icon bg-gradient-purple"><i class="fas fa-history"></i></div>
+        <span class="tg-action-label">History</span>
+    </a>
+</div>

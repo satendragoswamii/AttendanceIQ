@@ -1,0 +1,115 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Email Templates - Tango{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('tango.static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "_tango_nav.html" %}
+
+<div class="tg-page-header">
+    <h2><i class="fas fa-file-alt me-2"></i>Email Templates</h2>
+    <p>Create and manage custom invite templates. Pick which one to use each time you generate invites.</p>
+</div>
+
+<div class="tg-grid tg-grid-2col">
+    <div class="tg-card">
+        <h2 class="tg-card-title" id="formTitle"><i class="fas fa-user-plus"></i>Add New Template</h2>
+        <form method="POST" action="{{ url_for('tango.templates_add') }}" id="templateForm">
+            {{ csrf_field() }}
+            <div class="mb-2">
+                <label for="templateName" class="form-label mb-1">Template Name</label>
+                <input type="text" name="name" id="templateName" class="form-control form-control-sm" placeholder="e.g. Reminder Invite" required>
+            </div>
+            <div class="mb-2">
+                <label for="templateBody" class="form-label mb-1">Template Body</label>
+                <textarea name="body" id="templateBody" class="form-control form-control-sm" style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;" rows="14" required></textarea>
+                <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.5rem; line-height:1.6;">
+                    Available placeholders:
+                    <code>{salutation}</code> <code>{faculty_name}</code> <code>{date}</code> <code>{programme}</code>
+                    <code>{day}</code> <code>{topic}</code> <code>{session_time}</code> <code>{zoom_link}</code>
+                    <code>{meeting_id}</code> <code>{passcode}</code> <code>{location}</code>
+                </p>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" id="templateSubmitBtn">Create Template</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="cancelEditBtn" style="display:none;" onclick="resetTemplateForm()">Cancel Edit</button>
+        </form>
+    </div>
+
+    <div class="tg-card">
+        <h2 class="tg-card-title"><i class="fas fa-file-alt"></i>Saved Templates ({{ email_templates|length }})</h2>
+        {% for t in email_templates %}
+        <div class="tg-tpl-item">
+            <div class="tg-tpl-header">
+                <strong>{{ t.name }}</strong>
+                {% if t.is_default %}<span class="badge bg-success">Default</span>{% endif %}
+            </div>
+            <pre class="tg-preview-email" style="max-height:140px;">{{ t.body }}</pre>
+            <div class="tg-tpl-actions">
+                <button type="button" class="btn btn-sm btn-outline-info" onclick='previewTemplate({{ t.name|tojson }}, {{ t.body|tojson }})'>Preview</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick='editTemplate({{ t.id }}, {{ t.name|tojson }}, {{ t.body|tojson }})'>Edit</button>
+                {% if not t.is_default %}
+                <form method="POST" action="{{ url_for('tango.templates_set_default', template_id=t.id) }}">
+                    {{ csrf_field() }}
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Set Default</button>
+                </form>
+                <form method="POST" action="{{ url_for('tango.templates_delete', template_id=t.id) }}" onsubmit="return confirm('Delete this template?');">
+                    {{ csrf_field() }}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Template Preview Modal -->
+<div class="modal fade" id="templatePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom-color: var(--border-color);">
+                <h5 class="modal-title" id="templatePreviewTitle">Template Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="templatePreviewBody" class="tg-preview-email" style="max-height: 60vh;"></pre>
+            </div>
+            <div class="modal-footer" style="border-top-color: var(--border-color);">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function previewTemplate(name, body) {
+        document.getElementById('templatePreviewTitle').textContent = name;
+        document.getElementById('templatePreviewBody').textContent = body;
+        new bootstrap.Modal(document.getElementById('templatePreviewModal')).show();
+    }
+
+    function editTemplate(id, name, body) {
+        document.getElementById('templateForm').action = '/tango/templates/edit/' + id;
+        document.getElementById('templateName').value = name;
+        document.getElementById('templateBody').value = body;
+        document.getElementById('formTitle').lastChild.textContent = ' Edit Template';
+        document.getElementById('templateSubmitBtn').textContent = 'Update Template';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetTemplateForm() {
+        document.getElementById('templateForm').action = '/tango/templates/add';
+        document.getElementById('templateName').value = '';
+        document.getElementById('templateBody').value = '';
+        document.getElementById('formTitle').lastChild.textContent = ' Add New Template';
+        document.getElementById('templateSubmitBtn').textContent = 'Create Template';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+</script>
+{% endblock %}

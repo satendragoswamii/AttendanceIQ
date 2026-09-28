@@ -1,0 +1,1024 @@
+/* ========================================================================
+   ATTENDANCEIQ — PREMIUM HOME (Linear/Vercel/Raycast/Stripe-inspired)
+   Scoped entirely under body.premium-home so no other page is affected.
+
+   Layout system:
+   - Centered content column, fixed 1248px, equal left/right margins.
+   - 8px baseline grid: every gap/pad/size is a multiple of 4/8.
+   - Header logo 48px from left edge / 24px from top; controls 48px from
+     right edge / 24px from top, 52x52, 16px apart.
+   - Component sizes are pushed as large as a single 1920x1080 viewport
+     allows with NO scroll (header 88 + footer 72 => 920px content budget).
+   ======================================================================== */
+
+body.premium-home {
+  --p-bg: #070B1E;
+  --p-blue: #22D3EE;
+  --p-blue2: #3B82F6;
+  --p-purple: #8B5CF6;
+  --p-purple2: #A855F7;
+  --p-pink: #EC4899;
+  --p-green: #22C55E;
+  --p-white: #FFFFFF;
+  --p-text2: #B7C2DB;
+  --p-muted: #8B96B8;
+  --p-header-sub: #AEB8D6;
+  /* follows Settings -> Glass Effect like every other panel */
+  --p-card: var(--glass-surface, rgba(20, 28, 58, 0.82));
+  --p-surface: #151D3C;
+  --p-border: rgba(255, 255, 255, 0.08);
+  --p-container: 1248px;
+  background: var(--p-bg) !important;
+}
+
+/* ---- Background wash: two radial gradients, always behind particles ---- */
+body.premium-home::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 1400px 900px at 50% -10%, rgba(42, 98, 255, 0.15), transparent 60%),
+    radial-gradient(ellipse 1200px 800px at 110% 110%, rgba(236, 72, 153, 0.12), transparent 60%);
+  pointer-events: none;
+}
+
+/* Neutralize the shared bootstrap wrapper so we get a clean, self-controlled
+   1248px centered column instead of the app's default col-xxl-10 chrome. */
+body.premium-home .main-content .container-fluid {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+body.premium-home .main-content .row.justify-content-center {
+  margin: 0;
+}
+
+body.premium-home .main-content .col-xxl-10,
+body.premium-home .main-content .col-xl-11,
+body.premium-home .main-content .col-lg-12 {
+  width: 100%;
+  max-width: 100%;
+  flex: 0 0 100%;
+  padding: 0;
+}
+
+body.premium-home .main-content .mt-3 {
+  margin-top: 0 !important;
+}
+
+/* ======================================================================
+   HEADER — 88px, logo 48/24 (left/top), controls 48/24 (right/top)
+   ====================================================================== */
+
+body.premium-home .simple-header {
+  height: 88px;
+}
+
+/* Top-align brand + controls so both sit exactly 24px from the top. */
+body.premium-home .simple-header .container-fluid {
+  padding: 0;
+  max-width: none;
+}
+
+body.premium-home .simple-header .container-fluid > .d-flex {
+  align-items: flex-start !important;
+  padding-top: 24px;
+}
+
+body.premium-home .simple-header .brand-area {
+  margin-left: 0;
+  padding-left: 48px;
+  gap: 16px;
+  align-items: center;
+}
+
+body.premium-home .simple-header .brand-logo-mark svg {
+  width: 42px;
+  height: 42px;
+}
+
+body.premium-home .simple-header .brand-logo {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(90deg, var(--p-blue) 0%, var(--p-pink) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -1px;
+}
+
+body.premium-home .simple-header .brand-tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px !important;
+  font-weight: 500;
+  color: var(--p-header-sub) !important;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
+}
+
+body.premium-home .simple-header .d-flex.ms-auto {
+  margin-right: 0;
+  padding-right: 48px;
+  gap: 16px;
+}
+
+body.premium-home .simple-header .d-flex.ms-auto.align-items-center {
+  gap: 16px;
+  align-items: flex-start;
+}
+
+body.premium-home .simple-header .btn,
+body.premium-home #theme-toggle,
+body.premium-home #userDropdown {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-left: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+body.premium-home .simple-header .btn:hover,
+body.premium-home #theme-toggle:hover,
+body.premium-home #userDropdown:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+body.premium-home .simple-header .btn i,
+body.premium-home #theme-toggle i,
+body.premium-home #userDropdown i {
+  font-size: 22px;
+  color: #FFFFFF;
+}
+
+/* Fixed header + footer clearance. Content area fills the viewport exactly
+   (header 88 + footer 72) so the page never scrolls at 1920x1080. Content is
+   top-aligned; .ph-page adds the 40px badge-below-header gap. */
+body.premium-home .main-content {
+  margin-top: 88px !important;
+  /* footer box = 72px height + 1px top border => reserve 73px so the page
+     itself never scrolls (only this region would, and it's sized to fit). */
+  height: calc(100vh - 88px - 73px) !important;
+  max-height: calc(100vh - 88px - 73px) !important;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+body.premium-home .main-content .container-fluid {
+  width: 100%;
+}
+
+/* Split ("Quick Switch") view: keep it from stretching edge-to-edge on wide
+   screens. Constrain to a centered ~1180px column with generous side margins,
+   like a modern SaaS app. Only the split view is affected — the default home
+   view keeps its own 1248px wrapper. The reduced height (vs the base rule)
+   leaves clear breathing room from the header/logo when vertically centered. */
+body.premium-home #splitView {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  height: calc(100vh - 232px);
+  max-height: calc(100vh - 232px);
+}
+
+/* While the split ("Quick Switch") view is open, strip the header down to the
+   theme switcher only — the brand logo and the account/login button are hidden
+   so the tool panel is the sole focus. The controls stay right-aligned via the
+   existing ms-auto wrapper. */
+body.premium-home.split-mode-active .simple-header .brand-area,
+body.premium-home.split-mode-active .simple-header .d-flex.ms-auto .dropdown,
+body.premium-home.split-mode-active .simple-header #loginButton {
+  display: none !important;
+}
+
+/* Vertically centre the Quick Switch view in the whole area above the footer.
+   With the brand hidden, the header's 88px reservation is dead space that
+   pushed the panel low (≈108px of air above vs ≈52px below); dropping it and
+   zeroing the leftover bottom margins (.split-view 24px + #appContainer 8px)
+   leaves an equal ≈80px band above and below. Total height still adds up to
+   exactly 100vh, so the page does not scroll. Desktop only — under 900px the
+   split view flows naturally (see the max-width: 900px block). */
+@media (min-width: 901px) {
+  body.premium-home.split-mode-active .main-content {
+    margin-top: 0 !important;
+    height: calc(100vh - 73px) !important;
+    max-height: calc(100vh - 73px) !important;
+  }
+
+  body.premium-home.split-mode-active #appContainer {
+    margin-bottom: 0 !important;
+  }
+
+  body.premium-home.split-mode-active #splitView {
+    margin-bottom: 0;
+  }
+}
+
+/* Let both columns fill the split view's full height. */
+body.premium-home .tool-sidebar-split,
+body.premium-home .tool-panel-split {
+  max-height: none;
+}
+
+/* Utilize the panel's vertical space: the tool content fills the height
+   instead of leaving a big blank area at the bottom. The primary interactive
+   block grows; action bars/info cards anchor to sensible positions. */
+body.premium-home .tool-panel-split {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Smart Matcher: the file-pairs list absorbs the slack and the Output/Start
+   Matching bar stays pinned to the bottom of the panel. */
+body.premium-home .tool-panel-split > form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Anchor the Output/Start-Matching bar to the bottom of the panel so the
+   form fills the height with the action bar pinned, like a real app. */
+body.premium-home .tool-panel-split > form > div[style*="border-top"] {
+  margin-top: auto;
+}
+
+/* Two-column tools (Attendance / Final Excel): the row fills the height, the
+   upload button drops to the bottom of its column, and the "How to Use" card
+   stretches to full height so neither column leaves dead space. */
+body.premium-home .tool-panel-split > .row {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+body.premium-home .tool-panel-split > .row > [class*="col-"] {
+  display: flex;
+  flex-direction: column;
+}
+
+body.premium-home .tool-panel-split > .row > [class*="col-"] > form {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+body.premium-home .tool-panel-split > .row > [class*="col-"] > form > button[type="submit"] {
+  margin-top: auto;
+}
+
+body.premium-home .tool-panel-split > .row > [class*="col-"] > .p-3 {
+  flex: 1 1 auto;
+}
+
+/* ======================================================================
+   PAGE WRAPPER — 1248px fixed, centered, equal margins
+   ====================================================================== */
+
+.ph-page {
+  max-width: var(--p-container);
+  margin: 0 auto;
+  padding: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: phFadeIn 0.7s ease forwards;
+}
+
+@keyframes phFadeIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ======================================================================
+   STATUS BADGE — 40px below header (via .ph-page margin), centered, 48px
+   ====================================================================== */
+
+.ph-status-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 0;
+}
+
+.ph-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 28px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 24px rgba(34, 197, 94, 0.18);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #FFFFFF;
+  white-space: nowrap;
+}
+
+.ph-status-badge i.ph-verified {
+  font-size: 16px;
+  color: var(--p-green);
+}
+
+.ph-status-bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--p-green);
+  box-shadow: 0 0 8px var(--p-green);
+  flex-shrink: 0;
+}
+
+/* ======================================================================
+   HERO — soft radial glow behind the heading for contrast
+   ====================================================================== */
+
+.ph-hero {
+  position: relative;
+  text-align: center;
+  margin-top: 24px;
+}
+
+.ph-hero::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  width: 720px;
+  height: 240px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.16), rgba(139, 92, 246, 0.08) 45%, transparent 70%);
+  filter: blur(8px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.ph-hero h1 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 4.4vw, 3.75rem);
+  line-height: 1.06;
+  letter-spacing: -1.5px;
+  margin: 0 auto;
+  max-width: 900px;
+  background: linear-gradient(90deg, var(--p-blue) 0%, var(--p-purple) 50%, var(--p-pink) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ph-hero p {
+  font-family: 'Inter', sans-serif;
+  font-size: 19px;
+  line-height: 1.45;
+  color: #C5D1E8;
+  max-width: 720px;
+  margin: 16px auto 0;
+}
+
+.ph-divider {
+  width: 80px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--p-blue), var(--p-pink));
+  margin: 16px auto 0;
+}
+
+/* ======================================================================
+   SECTION HEADINGS
+   ====================================================================== */
+
+.ph-section {
+  margin-top: 34px;
+}
+
+.ph-section-heading {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: #FFFFFF;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ======================================================================
+   TOOLS GRID — 3 x 394px cards, 32px gaps, vertical card layout
+   ====================================================================== */
+
+.ph-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  justify-content: center;
+}
+
+.ph-tool-card {
+  position: relative;
+  border-radius: 22px;
+  background: var(--p-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  height: 264px;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: phCardIn 0.6s ease forwards;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ph-tool-card:nth-child(1) { animation-delay: 0.05s; }
+.ph-tool-card:nth-child(2) { animation-delay: 0.13s; }
+.ph-tool-card:nth-child(3) { animation-delay: 0.21s; }
+
+@keyframes phCardIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ph-tool-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 0 35px rgba(34, 211, 238, 0.28), 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* Glass reflection that follows the cursor (updated via JS custom props) */
+.ph-tool-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.06), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.ph-tool-card:hover::before {
+  opacity: 1;
+}
+
+/* Icon + app name together on one row, then description, then button */
+.ph-card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.ph-card-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(34, 211, 238, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.ph-tool-card:hover .ph-card-icon,
+.ph-feature-card:hover .ph-feature-icon {
+  transform: rotate(6deg);
+}
+
+.ph-card-icon i {
+  font-size: 22px;
+  color: var(--p-blue);
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.5));
+}
+
+.ph-card-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  color: #FFFFFF;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.ph-card-desc {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--p-text2);
+  margin-top: 18px;
+  flex: 1;
+}
+
+.ph-card-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
+  width: 100%;
+  margin-top: auto;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(90deg, var(--p-blue), var(--p-pink));
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ph-card-btn i {
+  font-size: 14px;
+}
+
+.ph-tool-card:hover .ph-card-btn {
+  transform: scale(1.03);
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+}
+
+/* ======================================================================
+   KEY FEATURES — 3 cards, vertically-centered content, centered accent bar
+   ====================================================================== */
+
+.ph-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  justify-content: center;
+}
+
+/* No box: features are a clean icon + text strip, no card background/border */
+.ph-feature-card {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 8px 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: auto;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: phCardIn 0.6s ease forwards;
+}
+
+.ph-feature-card:nth-child(1) { animation-delay: 0.29s; }
+.ph-feature-card:nth-child(2) { animation-delay: 0.37s; }
+.ph-feature-card:nth-child(3) { animation-delay: 0.45s; }
+
+.ph-feature-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.ph-feature-icon.accent-blue { background: rgba(34, 211, 238, 0.15); }
+.ph-feature-icon.accent-blue i { color: var(--p-blue); }
+.ph-feature-icon.accent-purple { background: rgba(139, 92, 246, 0.15); }
+.ph-feature-icon.accent-purple i { color: var(--p-purple); }
+.ph-feature-icon.accent-pink { background: rgba(236, 72, 153, 0.15); }
+.ph-feature-icon.accent-pink i { color: var(--p-pink); }
+
+.ph-feature-icon i {
+  font-size: 22px;
+}
+
+.ph-feature-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ph-feature-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.ph-feature-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--p-text2);
+  margin-top: 8px;
+}
+
+/* ======================================================================
+   BOTTOM INFO BANNER — full 1248px width, generous left padding
+   ====================================================================== */
+
+.ph-banner {
+  position: relative;
+  width: 100%;
+  margin: 28px auto 0;
+  height: 84px;
+  border-radius: 22px;
+  background: rgba(35, 44, 88, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 40px;
+  overflow: hidden;
+}
+
+.ph-banner-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ph-banner-icon i {
+  font-size: 20px;
+  color: var(--p-blue);
+}
+
+.ph-banner-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  margin: 0;
+}
+
+.ph-banner-title .b1 { color: var(--p-blue); }
+.ph-banner-title .b2 { color: var(--p-purple); }
+.ph-banner-title .b3 { color: var(--p-pink); }
+.ph-banner-title .sep { color: var(--p-muted); }
+
+.ph-banner-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #C7D1E6;
+  margin: 3px 0 0;
+}
+
+.ph-banner-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--p-blue), var(--p-pink), transparent);
+  background-size: 200% 100%;
+  animation: phWave 3.5s linear infinite;
+}
+
+@keyframes phWave {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+body.premium-home .ph-page {
+  position: relative;
+  z-index: 1;
+}
+
+/* ======================================================================
+   FOOTER — 72px, 3 columns with thin separators, 1248px aligned
+   ====================================================================== */
+
+body.premium-home .footer {
+  height: 72px;
+  padding: 0;
+  background: rgba(11, 17, 38, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.premium-home .footer .container-fluid {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  padding: 0 48px;
+  max-width: none;
+}
+
+/* This container is a flex row, so the shared footer content has to fill it --
+   otherwise it shrinks to its own width and the centred credit line ends up
+   sitting against the left edge. */
+body.premium-home .footer .container-fluid > div {
+  width: 100%;
+}
+
+.premium-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  max-width: var(--p-container);
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--p-header-sub);
+}
+
+.premium-footer-col {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.premium-footer-col:nth-child(1) { justify-content: flex-start; }
+.premium-footer-col:nth-child(3) { justify-content: center; }
+.premium-footer-col:nth-child(5) { justify-content: flex-end; }
+
+.premium-footer-sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.premium-footer-accent,
+.premium-footer-accent:hover {
+  color: var(--p-blue) !important;
+  text-decoration: none;
+}
+
+/* ======================================================================
+   LIGHT THEME — premium home follows the site theme toggle now.
+   Only the dark-only surfaces/text are re-mapped; gradients, accent
+   colors and layout stay identical.
+   ====================================================================== */
+
+body.premium-home[data-theme="light"] {
+  --p-bg: #EDF1FA;
+  --p-card: var(--glass-surface, rgba(255, 255, 255, 0.92));
+  --p-text2: #46516E;
+  --p-muted: #6B7591;
+  --p-header-sub: #55607E;
+  --p-border: rgba(15, 23, 55, 0.10);
+}
+
+/* Softer, lighter background wash */
+body.premium-home[data-theme="light"]::before {
+  background:
+    radial-gradient(ellipse 1400px 900px at 50% -10%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse 1200px 800px at 110% 110%, rgba(236, 72, 153, 0.07), transparent 60%);
+}
+
+/* Header control buttons */
+body.premium-home[data-theme="light"] .simple-header .btn,
+body.premium-home[data-theme="light"] #theme-toggle,
+body.premium-home[data-theme="light"] #userDropdown {
+  background: rgba(15, 23, 55, 0.05);
+  border-color: rgba(15, 23, 55, 0.10);
+}
+
+body.premium-home[data-theme="light"] .simple-header .btn:hover,
+body.premium-home[data-theme="light"] #theme-toggle:hover,
+body.premium-home[data-theme="light"] #userDropdown:hover {
+  background: rgba(15, 23, 55, 0.10);
+  border-color: rgba(15, 23, 55, 0.10);
+}
+
+body.premium-home[data-theme="light"] .simple-header .btn i,
+body.premium-home[data-theme="light"] #theme-toggle i,
+body.premium-home[data-theme="light"] #userDropdown i {
+  color: #1A2340;
+}
+
+/* Status badge */
+body.premium-home[data-theme="light"] .ph-status-badge {
+  background: rgba(34, 197, 94, 0.10);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #123321;
+}
+
+/* Hero */
+body.premium-home[data-theme="light"] .ph-hero::before {
+  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.06) 45%, transparent 70%);
+}
+
+body.premium-home[data-theme="light"] .ph-hero p {
+  color: #46516E;
+}
+
+/* Section headings */
+body.premium-home[data-theme="light"] .ph-section-heading {
+  color: #1A2340;
+}
+
+/* Tool cards */
+body.premium-home[data-theme="light"] .ph-tool-card {
+  border-color: rgba(15, 23, 55, 0.08);
+  box-shadow: 0 18px 40px rgba(30, 41, 89, 0.12);
+}
+
+body.premium-home[data-theme="light"] .ph-tool-card:hover {
+  box-shadow: 0 0 35px rgba(34, 211, 238, 0.22), 0 18px 40px rgba(30, 41, 89, 0.16);
+}
+
+body.premium-home[data-theme="light"] .ph-tool-card::before {
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), rgba(15, 23, 55, 0.05), transparent 60%);
+}
+
+body.premium-home[data-theme="light"] .ph-card-title,
+body.premium-home[data-theme="light"] .ph-feature-title {
+  color: #101830;
+}
+
+/* Bottom banner */
+body.premium-home[data-theme="light"] .ph-banner {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(15, 23, 55, 0.08);
+}
+
+body.premium-home[data-theme="light"] .ph-banner-desc {
+  color: #46516E;
+}
+
+/* Footer */
+body.premium-home[data-theme="light"] .footer {
+  background: rgba(255, 255, 255, 0.88);
+  border-top-color: rgba(15, 23, 55, 0.08);
+}
+
+body.premium-home[data-theme="light"] .premium-footer-sep {
+  background: rgba(15, 23, 55, 0.14);
+}
+
+/* ======================================================================
+   RESPONSIVE FALLBACKS — below desktop, allow normal scroll & stacking
+   ====================================================================== */
+
+/* Keep equal side margins once the fixed 1248px column no longer fits. */
+@media (max-width: 1296px) {
+  .ph-page {
+    padding: 0 24px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .ph-tools-grid,
+  .ph-features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ph-tool-card {
+    height: auto;
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 900px) {
+  body.premium-home .main-content {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    display: block;
+  }
+
+  /* Split view stacks and flows naturally on small screens (no fixed height,
+     no forced fill) so nothing gets clipped. */
+  body.premium-home #splitView {
+    height: auto;
+    max-height: none;
+  }
+  body.premium-home .tool-panel-split {
+    display: block;
+  }
+  .ph-page {
+    padding: 24px 16px;
+    margin-top: 0;
+  }
+
+  body.premium-home .simple-header {
+    height: 64px;
+  }
+
+  body.premium-home .simple-header .container-fluid > .d-flex {
+    padding-top: 0;
+    align-items: center !important;
+  }
+
+  body.premium-home .main-content {
+    margin-top: 64px !important;
+  }
+
+  body.premium-home .simple-header .brand-area {
+    padding-left: 12px;
+    gap: 10px;
+  }
+
+  body.premium-home .simple-header .brand-logo-mark svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  body.premium-home .simple-header .brand-logo {
+    font-size: 20px;
+  }
+
+  body.premium-home .simple-header .brand-tagline {
+    font-size: 11px !important;
+    margin-top: 2px;
+  }
+
+  body.premium-home .simple-header .d-flex.ms-auto {
+    padding-right: 12px;
+    gap: 8px;
+  }
+
+  body.premium-home .simple-header .btn,
+  body.premium-home #theme-toggle,
+  body.premium-home #userDropdown {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  body.premium-home .simple-header .btn i,
+  body.premium-home #theme-toggle i,
+  body.premium-home #userDropdown i {
+    font-size: 16px;
+  }
+
+  .ph-status-badge {
+    white-space: normal;
+    text-align: center;
+    height: auto;
+    min-height: 48px;
+    line-height: 1.4;
+    padding: 8px 20px;
+  }
+
+  .ph-tool-card {
+    height: auto;
+    min-height: 240px;
+  }
+
+  .ph-feature-card {
+    height: auto;
+    min-height: 120px;
+  }
+
+  .ph-banner {
+    height: auto;
+    min-height: 84px;
+    padding: 16px 24px;
+  }
+}
+
+@media (max-width: 680px) {
+  .ph-tools-grid,
+  .ph-features-grid {
+    grid-template-columns: 1fr;
+  }
+  .premium-footer-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .premium-footer-col {
+    flex: 0 0 auto;
+  }
+  body.premium-home .footer {
+    height: auto;
+    padding: 10px 0;
+  }
+  body.premium-home .footer .container-fluid {
+    height: auto;
+    padding: 8px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ph-page,
+  .ph-tool-card,
+  .ph-feature-card,
+  .ph-banner-wave {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

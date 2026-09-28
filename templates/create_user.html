@@ -1,0 +1,67 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Create User - {{ site_settings.app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-user-plus me-2"></i>Create New User</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ csrf_field() }}
+                    {% if session.role == 'superadmin' %}
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name (optional)</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name (optional)</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name">
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="user">Normal User</option>
+                            {% if session.role == 'superadmin' %}
+                            <option value="admin">Admin</option>
+                            <option value="subsuperadmin">Sub-Superadmin</option>
+                            {% endif %}
+                        </select>
+                        <div class="form-text">
+                            <strong>Normal User:</strong> Has 15-day access by default.<br>
+                            <strong>Admin:</strong> Can manage users they create.<br>
+                            <strong>Sub-Superadmin:</strong> Has extended permissions but controlled by Superadmin.<br>
+                            Only superadmins can create admins and sub-superadmins.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expires_at" class="form-label">Expiration Date (optional)</label>
+                        <input type="datetime-local" class="form-control" id="expires_at" name="expires_at">
+                        <div class="form-text">For normal users, this will be set to 15 days from creation if left blank.</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Admin Panel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

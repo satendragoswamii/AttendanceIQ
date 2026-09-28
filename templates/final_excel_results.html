@@ -1,0 +1,495 @@
+{% extends "base_comprehensive.html" %}
+{% block title %}Processed Files - {{ site_settings.app_name }}{% endblock %}
+{% block content %}
+<div class="container-fluid" style="max-height: calc(100vh - 120px); overflow: hidden; display: flex; flex-direction: column;">
+    <!-- Header Row -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="mb-0">
+                    <i class="fas fa-file-export me-2" style="color: var(--warning-color);"></i>
+                    Processed Files
+                </h4>
+                <div class="d-flex gap-2 flex-wrap">
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted" style="font-size: 0.7rem;" title="Applies to downloads below">
+                            <i class="fas fa-tag me-1"></i>Naming:
+                        </span>
+                        <select id="downloadNamingPref" class="form-select form-select-sm" style="font-size: 0.7rem; width: auto;" onchange="updateFinalDownloadNaming()">
+                            <option value="with_app_name">With app name</option>
+                            <option value="without_app_name">Without app name</option>
+                        </select>
+                    </div>
+                    <a href="{{ url_for('final_excel_download_all', batch_id=batch_id) }}" data-final-download-all="1" class="btn btn-success btn-sm">
+                        <i class="fas fa-download me-1"></i>Download All (ZIP)
+                    </a>
+                    <a href="{{ url_for('final_excel_cleanup', batch_id=batch_id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times me-1"></i>Clear & Go Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards Row -->
+    <div class="row mb-2 g-2">
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--success-color);" id="visibleFilesCount">{{ processed_files|length }}</h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Files Generated</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--primary-accent);">{{ processed_files|map(attribute='rows')|sum }}</h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Total Records</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--warning-color);">{{ output_format|upper }}</h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Output Format</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card h-100">
+                <div class="card-body py-2 px-3 text-center">
+                    <h4 class="mb-0" style="color: var(--info-color);"><span id="selectedCount">0</span></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Selected</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Actions Row -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <!-- App Filter -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-semibold" style="font-size: 0.8rem;">
+                                <i class="fas fa-filter me-1"></i>App:
+                            </span>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-filter="all" onclick="filterByApp('all', this)">
+                                    <i class="fas fa-layer-group me-1"></i>All
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="attendance" onclick="filterByApp('attendance', this)">
+                                    <i class="fas fa-calendar-check me-1"></i>Attendance
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="matcher" onclick="filterByApp('matcher', this)">
+                                    <i class="fas fa-exchange-alt me-1"></i>Smart Matcher
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="final-excel" onclick="filterByApp('final-excel', this)">
+                                    <i class="fas fa-file-export me-1"></i>Final Excel
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Bulk Actions -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                                <label class="form-check-label" for="selectAll" style="font-size: 0.75rem;">Select All</label>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteSelected()" id="deleteSelectedBtn" disabled>
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="downloadSelected()" id="downloadSelectedBtn" disabled>
+                                <i class="fas fa-download me-1"></i>Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Files Table -->
+    <div class="card flex-grow-1" style="overflow: hidden;">
+        <div class="card-body p-0" style="overflow-y: auto; max-height: calc(100vh - 340px);">
+            <table class="table table-hover table-sm mb-0">
+                <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 10;">
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th style="width: 40px;">#</th>
+                        <th>Filename</th>
+                        <th>Session</th>
+                        <th>Source</th>
+                        <th class="text-center" style="width: 70px;">Rows</th>
+                        <th class="text-end" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="filesTableBody">
+                    {% if processed_files %}
+                        {% for file in processed_files %}
+                        <tr data-filename="{{ file.unique_filename }}" data-app="final-excel">
+                            <td>
+                                <input type="checkbox" class="file-checkbox" onchange="updateSelectedCount()" style="cursor: pointer;">
+                            </td>
+                            <td><span class="badge bg-secondary" style="font-size: 0.65rem;">{{ loop.index }}</span></td>
+                            <td>
+                                <i class="fas fa-file-{{ 'excel' if output_format == 'xlsx' else 'csv' }} me-1" style="color: var(--success-color);"></i>
+                                <span class="editable-filename" 
+                                      data-filename="{{ file.unique_filename }}" 
+                                      data-original="{{ file.filename }}"
+                                      title="{{ file.filename }}"
+                                      style="font-size: 0.75rem; font-weight: 600; cursor: pointer; border-bottom: 1px dashed var(--text-secondary);"
+                                      onclick="startEditFilename(this)">{{ file.filename }}</span>
+                                <i class="fas fa-pencil-alt ms-1" style="font-size: 0.6rem; color: var(--text-secondary); opacity: 0.5;" title="Click to rename"></i>
+                            </td>
+                            <td>
+                                <span class="badge bg-info" style="font-size: 0.65rem;">{{ file.session[:25] }}{% if file.session|length > 25 %}...{% endif %}</span>
+                            </td>
+                            <td>
+                                <small class="text-muted" style="font-size: 0.7rem;">{{ file.source_file[:20] }}{% if file.source_file|length > 20 %}...{% endif %}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary" style="font-size: 0.65rem;">{{ file.rows }}</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('final_excel_download_file', batch_id=batch_id, filename=file.unique_filename) }}" 
+                                                    data-final-download-link="1"
+                                       class="btn btn-outline-success btn-sm py-0 px-1" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="deleteFile('{{ file.unique_filename }}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-folder-open fa-2x mb-2 d-block opacity-50"></i>
+                                No processed files found
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer Tips -->
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
+                <span>
+                    <i class="fas fa-lightbulb me-1"></i>
+                    <strong>Tip:</strong> Select files using checkboxes, then click Download or Delete to perform bulk actions.
+                </span>
+                <a href="{{ url_for('final_excel_download_all', batch_id=batch_id) }}" data-final-download-all="1" class="btn btn-success btn-sm py-0 px-2" style="font-size: 0.7rem;">
+                    <i class="fas fa-file-archive me-1"></i>Download All as ZIP
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const FINAL_DOWNLOAD_NAMING_KEY = 'attendancify_download_naming_pref';
+
+    function getFinalDownloadNaming() {
+        const select = document.getElementById('downloadNamingPref');
+        return select ? select.value : 'with_app_name';
+    }
+
+    function updateFinalDownloadNaming() {
+        const naming = getFinalDownloadNaming();
+        try { localStorage.setItem(FINAL_DOWNLOAD_NAMING_KEY, naming); } catch (e) { /* ignore storage errors */ }
+        document.querySelectorAll('[data-final-download-link]').forEach(link => {
+            const url = new URL(link.href, window.location.origin);
+            url.searchParams.set('naming', naming);
+            link.href = url.toString();
+        });
+        document.querySelectorAll('[data-final-download-all]').forEach(link => {
+            const url = new URL(link.href, window.location.origin);
+            url.searchParams.set('naming', naming);
+            link.href = url.toString();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const saved = localStorage.getItem(FINAL_DOWNLOAD_NAMING_KEY);
+        const select = document.getElementById('downloadNamingPref');
+        if (select && saved) select.value = saved;
+        updateFinalDownloadNaming();
+    });
+
+    // Filter by app type
+    function filterByApp(filter, btn) {
+        // Update active button
+        document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Filter rows
+        const rows = document.querySelectorAll('#filesTableBody tr[data-filename]');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            if (filter === 'all' || row.dataset.app === filter) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('visibleFilesCount').textContent = visibleCount;
+        
+        // Reset select all
+        document.getElementById('selectAll').checked = false;
+        updateSelectedCount();
+    }
+    
+    // Toggle select all
+    function toggleSelectAll(checkbox) {
+        const visibleRows = document.querySelectorAll('#filesTableBody tr[data-filename]:not([style*="display: none"])');
+        visibleRows.forEach(row => {
+            row.querySelector('.file-checkbox').checked = checkbox.checked;
+        });
+        updateSelectedCount();
+    }
+    
+    // Update selected count
+    function updateSelectedCount() {
+        const visibleRows = document.querySelectorAll('#filesTableBody tr[data-filename]:not([style*="display: none"])');
+        const checkedCount = Array.from(visibleRows).filter(row => 
+            row.querySelector('.file-checkbox').checked
+        ).length;
+        
+        document.getElementById('selectedCount').textContent = checkedCount;
+        document.getElementById('deleteSelectedBtn').disabled = checkedCount === 0;
+        document.getElementById('downloadSelectedBtn').disabled = checkedCount === 0;
+        
+        // Update select all checkbox state
+        const selectAll = document.getElementById('selectAll');
+        if (visibleRows.length > 0) {
+            selectAll.checked = checkedCount === visibleRows.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < visibleRows.length;
+        }
+    }
+    
+    // Delete single file
+    function deleteFile(filename) {
+        if (confirm('Delete this file?')) {
+            fetch(`{{ url_for('final_excel_delete_file', batch_id=batch_id, filename='PLACEHOLDER') }}`.replace('PLACEHOLDER', filename), {
+                method: 'DELETE'
+            }).then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                    const row = document.querySelector(`tr[data-filename="${filename}"]`);
+                    if (row) row.remove();
+                    updateSelectedCount();
+                    updateVisibleCount();
+                }
+            });
+        }
+    }
+    
+    // Delete selected files
+    function deleteSelected() {
+        const selected = Array.from(document.querySelectorAll('#filesTableBody tr[data-filename]:not([style*="display: none"]) .file-checkbox:checked'))
+            .map(cb => cb.closest('tr').dataset.filename);
+        
+        if (selected.length === 0) return;
+        
+        if (confirm(`Delete ${selected.length} selected file(s)?`)) {
+            Promise.all(selected.map(filename => 
+                fetch(`{{ url_for('final_excel_delete_file', batch_id=batch_id, filename='PLACEHOLDER') }}`.replace('PLACEHOLDER', filename), {
+                    method: 'DELETE'
+                })
+            )).then(() => {
+                selected.forEach(filename => {
+                    const row = document.querySelector(`tr[data-filename="${filename}"]`);
+                    if (row) row.remove();
+                });
+                updateSelectedCount();
+                updateVisibleCount();
+            });
+        }
+    }
+    
+    // Update visible count after delete
+    function updateVisibleCount() {
+        const remaining = document.querySelectorAll('#filesTableBody tr[data-filename]').length;
+        document.getElementById('visibleFilesCount').textContent = remaining;
+        if (remaining === 0) {
+            window.location.href = '{{ url_for("index") }}';
+        }
+    }
+    
+    // Download selected files
+    function downloadSelected() {
+        const selected = Array.from(document.querySelectorAll('#filesTableBody tr[data-filename]:not([style*="display: none"]) .file-checkbox:checked'))
+            .map(cb => cb.closest('tr').dataset.filename);
+        
+        if (selected.length === 0) return;
+        
+        // Download each file with a small delay
+        selected.forEach((filename, index) => {
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = `{{ url_for('final_excel_download_file', batch_id=batch_id, filename='PLACEHOLDER') }}`.replace('PLACEHOLDER', filename);
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, index * 500);
+        });
+    }
+    
+    // Start editing filename
+    function startEditFilename(element) {
+        const currentName = element.dataset.original;
+        const uniqueFilename = element.dataset.filename;
+        
+        // Get extension
+        const lastDot = currentName.lastIndexOf('.');
+        const nameWithoutExt = lastDot > 0 ? currentName.substring(0, lastDot) : currentName;
+        const ext = lastDot > 0 ? currentName.substring(lastDot) : '';
+        
+        // Create input
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = nameWithoutExt;
+        input.className = 'form-control form-control-sm';
+        input.style.cssText = 'font-size: 0.75rem; padding: 2px 5px; width: 200px; display: inline-block;';
+        
+        // Store original element and extension
+        input.dataset.originalElement = element.outerHTML;
+        input.dataset.ext = ext;
+        input.dataset.uniqueFilename = uniqueFilename;
+        
+        // Replace span with input
+        const parent = element.parentNode;
+        const pencilIcon = element.nextElementSibling;
+        parent.replaceChild(input, element);
+        if (pencilIcon) pencilIcon.style.display = 'none';
+        
+        input.focus();
+        input.select();
+        
+        // Handle blur and enter
+        input.addEventListener('blur', function() {
+            finishEditFilename(this, parent, pencilIcon);
+        });
+        
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+            } else if (e.key === 'Escape') {
+                cancelEditFilename(this, parent, pencilIcon);
+            }
+        });
+    }
+    
+    // Finish editing
+    function finishEditFilename(input, parent, pencilIcon) {
+        const newName = input.value.trim();
+        const ext = input.dataset.ext;
+        const uniqueFilename = input.dataset.uniqueFilename;
+        const fullNewName = newName + ext;
+        
+        if (newName) {
+            // Update on server
+            fetch(`{{ url_for('final_excel_rename_file', batch_id=batch_id, filename='PLACEHOLDER') }}`.replace('PLACEHOLDER', uniqueFilename), {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                body: JSON.stringify({new_name: fullNewName})
+            }).then(response => response.json())
+              .then(data => {
+                // Create new span
+                const span = document.createElement('span');
+                span.className = 'editable-filename';
+                span.dataset.filename = uniqueFilename;
+                span.dataset.original = data.success ? fullNewName : input.dataset.original;
+                span.title = span.dataset.original;
+                span.style.cssText = 'font-size: 0.75rem; font-weight: 600; cursor: pointer; border-bottom: 1px dashed var(--text-secondary);';
+                span.onclick = function() { startEditFilename(this); };
+                
+                const displayName = span.dataset.original;
+                span.textContent = displayName.length > 40 ? displayName.substring(0, 40) + '...' : displayName;
+                
+                // Replace input with span
+                parent.replaceChild(span, input);
+                
+                // Restore pencil icon
+                if (pencilIcon) {
+                    pencilIcon.style.display = '';
+                    span.after(pencilIcon);
+                }
+            });
+        } else {
+            cancelEditFilename(input, parent, pencilIcon);
+        }
+    }
+    
+    // Cancel editing
+    function cancelEditFilename(input, parent, pencilIcon) {
+        const originalHtml = input.dataset.originalElement;
+        const temp = document.createElement('div');
+        temp.innerHTML = originalHtml;
+        const span = temp.firstChild;
+        span.onclick = function() { startEditFilename(this); };
+        
+        parent.replaceChild(span, input);
+        if (pencilIcon) {
+            pencilIcon.style.display = '';
+        }
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSelectedCount();
+        
+        // Initialize tooltips for truncated filenames
+        document.querySelectorAll('.editable-filename').forEach(el => {
+            el.addEventListener('mouseenter', function(e) {
+                if (this.dataset.original.length > 40) {
+                    showTooltip(this, this.dataset.original);
+                }
+            });
+            el.addEventListener('mouseleave', function() {
+                hideTooltip();
+            });
+        });
+    });
+    
+    // Tooltip functions
+    let tooltipEl = null;
+    
+    function showTooltip(target, text) {
+        if (!tooltipEl) {
+            tooltipEl = document.createElement('div');
+            tooltipEl.style.cssText = 'position: fixed; background: var(--bg-elevated); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; z-index: 9999; max-width: 400px; word-break: break-all; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border: 1px solid var(--border-color);';
+            document.body.appendChild(tooltipEl);
+        }
+        
+        tooltipEl.textContent = text;
+        tooltipEl.style.display = 'block';
+        
+        const rect = target.getBoundingClientRect();
+        tooltipEl.style.left = rect.left + 'px';
+        tooltipEl.style.top = (rect.bottom + 5) + 'px';
+    }
+    
+    function hideTooltip() {
+        if (tooltipEl) {
+            tooltipEl.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

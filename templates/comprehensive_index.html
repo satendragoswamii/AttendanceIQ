@@ -1,0 +1,870 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}{{ site_settings.app_name }} - Professional Attendance Management{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home-premium.css') }}?v=13">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<!-- Hybrid Layout: Default Full View / Split Mode on Tool Click -->
+<div id="appContainer" class="app-container" style="margin-bottom: 0.5rem;">
+    
+    <!-- DEFAULT VIEW: Premium hero + Tools + Key Features.
+         Hidden server-side when /?tool=<id> asked for the split view, so the
+         home view never flashes before the tool panel appears. -->
+    <div id="defaultView" class="default-view"{% if initial_tool %} style="display: none;"{% endif %}>
+    <div class="ph-page" id="phPage">
+        <!-- Status badge -->
+        <div class="ph-status-wrap">
+            <div class="ph-status-badge">
+                <i class="fas fa-shield-alt ph-verified"></i>
+                {% set first_name = session.first_name or session.user_id %}
+                {% set remaining = get_remaining_time(session.user_id) %}
+                {% set last_activity = session.last_activity %}
+                <span>
+                    Logged in as <strong>{{ first_name }}</strong> ({{ session.role|title }})
+                    {% if remaining and remaining != 'Permanent' %}
+                        • Access expires in <strong>{{ remaining }}</strong>
+                    {% elif session.role == 'superadmin' %}
+                        • Access: Permanent
+                    {% elif last_activity %}
+                        • Last activity: <strong>{{ last_activity }}</strong>
+                    {% else %}
+                        • Access: Active (no expiry set)
+                    {% endif %}
+                </span>
+                <span class="ph-status-bullet"></span>
+            </div>
+        </div>
+
+        <!-- Hero -->
+        <div class="ph-hero">
+            <h1>Automate. Match. Generate.</h1>
+            <p>Powerful tools to simplify attendance processing and faculty communication.</p>
+            <div class="ph-divider"></div>
+        </div>
+
+        <!-- Available Tools -->
+        <div class="ph-section">
+            <div class="ph-section-heading">Available Tools</div>
+            <div class="ph-tools-grid">
+                <div class="ph-tool-card clickable-tool" data-tool="attendance-generator">
+                    <div class="ph-card-header">
+                        <div class="ph-card-icon"><i class="fas fa-calendar-check"></i></div>
+                        <h3 class="ph-card-title">{{ app_names.app1 if app_names else 'Zoom Attendance Analyzer' }}</h3>
+                    </div>
+                    <p class="ph-card-desc">Generate attendance from Zoom logs with custom time thresholds and smart processing.</p>
+                    <button class="ph-card-btn"><i class="fas fa-cog"></i> Launch <i class="fas fa-arrow-right"></i></button>
+                </div>
+                <div class="ph-tool-card clickable-tool" data-tool="smart-matcher">
+                    <div class="ph-card-header">
+                        <div class="ph-card-icon"><i class="fas fa-exchange-alt"></i></div>
+                        <h3 class="ph-card-title">{{ app_names.app2 if app_names else 'Intelligent Record Matcher' }}</h3>
+                    </div>
+                    <p class="ph-card-desc">Match records using fuzzy algorithms with high accuracy and reduce manual effort.</p>
+                    <button class="ph-card-btn"><i class="fas fa-link"></i> Match <i class="fas fa-arrow-right"></i></button>
+                </div>
+                <div class="ph-tool-card clickable-tool" data-tool="final-excel-generator">
+                    <div class="ph-card-header">
+                        <div class="ph-card-icon"><i class="fas fa-file-export"></i></div>
+                        <h3 class="ph-card-title">{{ app_names.app3 if app_names else 'Session Report Generator' }}</h3>
+                    </div>
+                    <p class="ph-card-desc">Generate individual session files from matched attendance data in a single click.</p>
+                    <button class="ph-card-btn"><i class="fas fa-file-export"></i> Generate <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div class="ph-section">
+            <div class="ph-section-heading">Key Features</div>
+            <div class="ph-features-grid">
+                <div class="ph-feature-card">
+                    <div class="ph-feature-icon accent-blue"><i class="fas fa-bolt"></i></div>
+                    <div class="ph-feature-body">
+                        <h4 class="ph-feature-title">Fast Processing</h4>
+                        <p class="ph-feature-desc">Process thousands of records in seconds.</p>
+                    </div>                </div>
+                <div class="ph-feature-card">
+                    <div class="ph-feature-icon accent-purple"><i class="fas fa-sync-alt"></i></div>
+                    <div class="ph-feature-body">
+                        <h4 class="ph-feature-title">Fuzzy Matching</h4>
+                        <p class="ph-feature-desc">Handle name variations automatically with smart algorithms.</p>
+                    </div>                </div>
+                <div class="ph-feature-card">
+                    <div class="ph-feature-icon accent-pink"><i class="fas fa-file-export"></i></div>
+                    <div class="ph-feature-body">
+                        <h4 class="ph-feature-title">Excel Reports</h4>
+                        <p class="ph-feature-desc">Export professional formatted reports ready to use.</p>
+                    </div>                </div>
+            </div>
+        </div>
+
+        <!-- Secure / Reliable / Intelligent banner -->
+        <div class="ph-banner">
+            <div class="ph-banner-icon"><i class="fas fa-shield-alt"></i></div>
+            <div>
+                <p class="ph-banner-title mb-0"><span class="b1">Secure</span> <span class="sep">•</span> <span class="b2">Reliable</span> <span class="sep">•</span> <span class="b3">Intelligent</span></p>
+                <p class="ph-banner-desc">AI-powered tool that ensures accuracy, saves time and reduces manual work.</p>
+            </div>
+            <span class="ph-banner-wave"></span>
+        </div>
+    </div>
+    </div>
+    
+    <!-- SPLIT MODE: Sidebar + Tool Panel (hidden unless deep-linked) -->
+    <div id="splitView" class="split-view" style="display: {{ 'flex' if initial_tool else 'none' }};">
+        
+        <!-- Mobile Menu Toggle Button (only visible on mobile) -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <!-- Mobile Sidebar Overlay (for closing sidebar when clicking outside) -->
+        <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
+        
+        <!-- Left Sidebar - Compact Tool Gallery -->
+        <div id="toolSidebar" class="tool-sidebar-split">
+            <!-- Close Split Mode Button -->
+            <button class="btn btn-sm w-100 mb-3" id="closeSplitMode" style="background: var(--bg-elevated); border: 1px solid var(--border-color); color: var(--text-primary);">
+                <i class="fas fa-arrow-left me-2"></i>Back to All Tools
+            </button>
+            
+            <!-- Login Status REMOVED from Split View -->
+            
+            <h6 class="mb-3" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Quick Switch</h6>
+            
+            <!-- Compact Tool List -->
+            <div class="sidebar-tool-list-split">
+                <div class="sidebar-tool-item" data-tool="attendance-generator">
+                    <div class="d-flex align-items-center">
+                        <div class="tool-icon-small me-2">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="tool-name">Attendance Generator</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-tool-item" data-tool="smart-matcher">
+                    <div class="d-flex align-items-center">
+                        <div class="tool-icon-small me-2">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="tool-name">Smart Matcher</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-tool-item" data-tool="final-excel-generator">
+                    <div class="d-flex align-items-center">
+                        <div class="tool-icon-small me-2">
+                            <i class="fas fa-file-export"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="tool-name">Final Excel Generator</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Login Button at Bottom (if not logged in) -->
+            {% if not session.user_id %}
+            <div class="mt-auto pt-3" style="border-top: 1px solid var(--border-color);">
+                <button class="btn btn-primary w-100 btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login Required
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Right Panel - Tool Interface -->
+        <div id="toolPanel" class="tool-panel-split">
+            <!-- Tool content will be injected here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Batch data for Smart Matcher (injected from server)
+const canUseBatchMatching = {{ 'true' if (session.role == 'superadmin' or can_use_batch_matching) else 'false' }};
+const groupsData = [
+    {% for g in groups %}
+    { id: {{ g.id }}, name: "{{ g.name }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+const subgroupsData = [
+    {% for sg in subgroups %}
+    { id: {{ sg.id }}, name: "{{ sg.name }}", groupId: {{ sg.group_id }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+const batchesData = [
+    {% for b in batches %}
+    { id: {{ b.id }}, name: "{{ b.name }}", count: {{ batch_counts.get(b.id, 0) }}, groupId: {{ b.group_id or 'null' }}, subgroupId: {{ b.subgroup_id or 'null' }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+window.smartMatcherGroups = groupsData;
+window.smartMatcherSubgroups = subgroupsData;
+window.smartMatcherBatches = batchesData;
+window.canUseBatchMatching = canUseBatchMatching;
+window.serverAutoMatchFiles = {{ auto_match_files|tojson }};
+window.serverAutoFinalFiles = {{ auto_final_files|tojson }};
+
+function escapeTileHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
+}
+
+function attachAutoFilesToExistingPairs() {
+    const form = document.getElementById('splitViewMatchingForm');
+    const container = document.getElementById('split-file-pairs-container');
+    const addPairButton = document.getElementById('split-add-pair-btn');
+    const files = window.serverAutoMatchFiles || [];
+    if (!form || !container || !addPairButton) return;
+    if (!files.length) { alert('No generated Attendance files are available on the server. If you have a previously downloaded copy, click "Add Pair" and upload it in the Raw field -- it will still be matched using the batch you choose.'); return; }
+
+    files.forEach((file, index) => {
+        if (index > 0) addPairButton.click();
+        const row = container.querySelectorAll('.file-pair-row')[index];
+        if (!row) return;
+        const pairIndex = row.dataset.pairIndex || String(index);
+        let serverInput = row.querySelector('[name="server_file_id_' + pairIndex + '"]');
+        if (!serverInput) {
+            serverInput = document.createElement('input');
+            serverInput.type = 'hidden';
+            serverInput.name = 'server_file_id_' + pairIndex;
+            row.appendChild(serverInput);
+        }
+        serverInput.value = file.id;
+
+        const rawInput = row.querySelector('.raw-input');
+        if (rawInput) {
+            rawInput.required = false;
+            rawInput.disabled = true;
+            rawInput.style.display = 'none';
+            let attached = row.querySelector('.server-file-attachment');
+            if (!attached) {
+                attached = document.createElement('div');
+                attached.className = 'server-file-attachment small text-success text-truncate mt-1';
+                rawInput.parentElement.appendChild(attached);
+            }
+            attached.innerHTML = '<i class="fas fa-paperclip me-1"></i>' + escapeTileHtml(file.name);
+        }
+
+        const sourceSelect = row.querySelector('.master-source-select');
+        if (sourceSelect) { sourceSelect.value = 'batch'; sourceSelect.dispatchEvent(new Event('change')); }
+        const batchSelect = row.querySelector('.smart-batch-select');
+        const batch = (window.smartMatcherBatches || []).find(item => String(item.id) === String(file.suggested_batch_id || ''));
+        if (batchSelect && batch) {
+            if (!Array.from(batchSelect.options).some(option => String(option.value) === String(batch.id))) {
+                batchSelect.add(new Option(batch.name + ' (' + batch.count + ' students)', batch.id));
+            }
+            batchSelect.disabled = false;
+            batchSelect.value = batch.id;
+            batchSelect.dispatchEvent(new Event('change'));
+        }
+    });
+
+    const autoExtract = form.querySelector('[name="auto_extract"]');
+    if (autoExtract) autoExtract.checked = true;
+    const status = document.createElement('div');
+    status.className = 'small text-success mt-1';
+    status.innerHTML = '<i class="fas fa-check-circle me-1"></i>Generated files attached to the existing file pairs.';
+    form.insertBefore(status, form.firstChild.nextSibling);
+}
+
+function renderTileAutomationPanels() {
+
+    const finalPanel = document.getElementById('finalAutoTilePanel');
+    if (finalPanel) {
+        const rows = (window.serverAutoFinalFiles || []).map(file => `<label class="d-flex align-items-center gap-2 border-top py-2 small"><input class="form-check-input" type="checkbox" name="server_file_id" value="${file.id}"><span class="text-truncate">${escapeTileHtml(file.name)}</span></label>`).join('');
+        finalPanel.innerHTML = `<form method="POST" action="{{ url_for('process_final_excel') }}" enctype="multipart/form-data" class="p-2 rounded" style="background:var(--bg-elevated); border:1px solid var(--border-color);">{{ csrf_field() }}<input type="hidden" name="output_format" value="xlsx"><div class="small fw-semibold mb-1">100% matched Smart Matcher files</div>${rows || '<small class="text-muted">No 100% matched server files available.</small>'}<div class="small fw-semibold mt-2 mb-1">Removed from the server? Push a file from your device</div><input type="file" name="excel_files" class="form-control form-control-sm" accept=".xlsx,.xls" multiple><button type="submit" class="btn btn-primary btn-sm mt-2"><i class="fas fa-cogs me-1"></i>Generate session files</button></form>`;
+    }
+}
+
+function toggleTileAutomation(panelId, button, counterpartId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    if (!panel.dataset.loaded) { renderTileAutomationPanels(); panel.dataset.loaded = '1'; }
+    const showingAuto = panel.style.display === 'none';
+    panel.style.display = showingAuto ? 'block' : 'none';
+    button.setAttribute('aria-expanded', showingAuto ? 'true' : 'false');
+
+    // Only one upload UI should be visible at a time -- hide the manual
+    // upload form while the auto-detect panel is open, and restore it when
+    // switching back.
+    if (counterpartId) {
+        const counterpart = document.getElementById(counterpartId);
+        if (counterpart) counterpart.style.display = showingAuto ? 'none' : '';
+    }
+
+    if (showingAuto) {
+        button.innerHTML = '<i class="fas fa-arrow-left"></i>';
+        button.title = 'Back to manual upload';
+        button.setAttribute('aria-label', 'Back to manual upload');
+    } else {
+        button.innerHTML = '<i class="fas fa-magic"></i>';
+        button.title = 'Auto-detect 100% matched files';
+        button.setAttribute('aria-label', 'Auto-detect 100% matched files');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const splitView = document.getElementById('splitView');
+    const toolPanel = document.getElementById('toolPanel');
+    const closeSplitModeBtn = document.getElementById('closeSplitMode');
+    const clickableTools = document.querySelectorAll('.clickable-tool');
+    const sidebarItems = document.querySelectorAll('.sidebar-tool-item');
+    
+    // Tool Templates (embedded HTML for each tool)
+    const toolTemplates = {
+        'attendance-generator': `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0" style="font-weight: 700;">
+                    <i class="fas fa-calendar-check me-2" style="color: var(--primary-accent);"></i>
+                    Attendance Generator
+                </h4>
+                <button onclick="closeSplitView()" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+            </div>
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <h6 class="mb-2">Upload Zoom Session Logs</h6>
+                    <form method="POST" action="{{ url_for('upload_attendance_file') }}" enctype="multipart/form-data" data-progress="attendance-upload">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="mode" value="multiple">
+                        <div class="mb-3">
+                            <label class="form-label small">Select Zoom Log Files</label>
+                            <input class="form-control form-control-sm" type="file" name="csv_files" accept=".csv,.xlsx" multiple {% if not session.user_id %}disabled{% endif %}>
+                            <div class="form-text small">Upload CSV or Excel format files</div>
+                        </div>
+                        <div class="alert alert-warning py-2 small">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Human verification required for this tool
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="fas fa-upload me-1"></i>Upload and Configure
+                        </button>
+                    </form>
+                </div>
+                <div class="col-lg-6">
+                    <div class="p-3 rounded" style="background: var(--bg-elevated); border: 1px solid var(--border-color);">
+                        <h6><i class="fas fa-info-circle me-1"></i>How to Use</h6>
+                        <p class="text-muted small mb-2">Upload your Zoom attendance file and configure session settings.</p>
+                        <p class="small mb-1 fw-semibold">File Format Requirements:</p>
+                        <ul class="small mb-0" style="padding-left: 1.2rem;">
+                            <li>Name (First Name)</li>
+                            <li>User Name (Display Name)</li>
+                            <li>User Email</li>
+                            <li>Join Time & Leave Time</li>
+                            <li>Duration (Minutes)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `,
+        'final-excel-generator': `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0" style="font-weight: 700;">
+                    <i class="fas fa-file-export me-2" style="color: var(--warning-color);"></i>
+                    Final Excel Generator
+                </h4>
+                <div class="d-flex gap-1">
+                {% if session.user_id %}
+                <button type="button" class="btn btn-outline-success btn-sm px-2" onclick="toggleTileAutomation('finalAutoTilePanel', this, 'finalManualUploadPanel')" title="Auto-detect 100% matched files" aria-label="Auto-detect 100% matched files">
+                    <i class="fas fa-magic"></i>
+                </button>
+                {% endif %}
+                <button onclick="closeSplitView()" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <h6 class="mb-2">Upload Matched Attendance Files</h6>
+                    <div id="finalAutoTilePanel" class="mb-2" style="display:none; max-width: 620px;"></div>
+                    <div id="finalManualUploadPanel">
+                    <form method="POST" action="{{ url_for('process_final_excel') }}" enctype="multipart/form-data" data-progress="final-excel">
+                        {{ csrf_field() }}
+                        <div class="mb-3">
+                            <label class="form-label small">Select Matched Files (.xlsx)</label>
+                            <input class="form-control form-control-sm" type="file" name="excel_files" accept=".xlsx,.xls" multiple {% if not session.user_id %}disabled{% endif %} required>
+                            <div class="form-text small">Upload files from Smart Matcher (with "Matched" sheet)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Output Format</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="output_format" id="final_xlsx" value="xlsx" checked>
+                                <label class="form-check-label" for="final_xlsx">Excel (.xlsx)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="output_format" id="final_csv" value="csv">
+                                <label class="form-check-label" for="final_csv">CSV (.csv)</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="fas fa-cogs me-1"></i>Generate Session Files
+                        </button>
+                    </form>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="p-3 rounded" style="background: var(--bg-elevated); border: 1px solid var(--border-color);">
+                        <h6><i class="fas fa-info-circle me-1"></i>How to Use</h6>
+                        <p class="text-muted small mb-2">Upload matched attendance files to generate individual session files.</p>
+                        <p class="small mb-1 fw-semibold">File Format Requirements:</p>
+                        <ul class="small mb-0" style="padding-left: 1.2rem;">
+                            <li>Excel file with "Matched" sheet</li>
+                            <li>Email column (email_id)</li>
+                            <li>Session columns with attendance status</li>
+                        </ul>
+                        <p class="small mt-2 mb-0 fw-semibold">Output:</p>
+                        <ul class="small mb-0" style="padding-left: 1.2rem;">
+                            <li>One file per session</li>
+                            <li>Format: email_id, attendance(absent/present/leave)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `,
+        'smart-matcher': `
+            <style>
+                /* Smart Matcher specific styles - consistent with other tools */
+                .file-pair-row {
+                    transition: all 0.3s ease;
+                    background: var(--bg-elevated);
+                    border-left: 4px solid var(--secondary-accent) !important;
+                }
+                
+                .file-pair-row:hover {
+                    box-shadow: 0 0 15px rgba(0, 217, 255, 0.2), 0 2px 8px rgba(0,0,0,0.15);
+                    border-left-color: var(--primary-accent) !important;
+                }
+                
+                .file-name-display {
+                    min-height: 30px;
+                    display: flex;
+                    align-items: center;
+                    transition: all 0.2s ease;
+                }
+                
+                .form-label {
+                    color: var(--text-primary);
+                    font-weight: 500;
+                }
+                
+                .btn-outline-primary {
+                    border-width: 2px;
+                }
+                
+                .btn-outline-primary:hover {
+                    border-width: 2px;
+                }
+                
+                .card-body {
+                    overflow-y: hidden;
+                    padding: 0.5rem !important;
+                }
+                
+                /* Custom styles for file name display in both themes */
+                .file-name-display {
+                    min-height: 0;
+                    display: flex;
+                    align-items: center;
+                    transition: all 0.2s ease;
+                    background-color: var(--bg-elevated) !important;
+                    color: var(--success-accent) !important;
+                    border: 1px solid var(--border-color) !important;
+                    margin-top: 0.25rem;
+                }
+                
+                .card-option input:checked + label {
+                    border-color: var(--primary-color);
+                    background-color: var(--primary-color);
+                    color: white;
+                    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.25);
+                }
+
+                .card-option label:hover {
+                    border-color: var(--primary-color);
+                    transform: translateY(-1px);
+                    box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+                }
+
+                .card-option label {
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                }
+
+                .space-y-3 > * + * {
+                    margin-top: 1rem;
+                }
+
+                .master-mode-wrapper {
+                    transition: opacity 0.3s ease, height 0.3s ease;
+                }
+                
+                /* Output format section */
+                .output-format-section {
+                    background-color: var(--bg-elevated) !important;
+                    border: 1px solid var(--border-color) !important;
+                }
+            </style>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0" style="font-weight: 700;">
+                    <i class="fas fa-exchange-alt me-2" style="color: var(--secondary-accent);"></i>
+                    Smart Matcher
+                </h4>
+                <div class="d-flex gap-1">
+                    {% if session.user_id %}
+                    <button type="button" class="btn btn-outline-success btn-sm px-2" onclick="attachAutoFilesToExistingPairs()" title="Attach generated files to existing pairs" aria-label="Attach generated files to existing pairs">
+                        <i class="fas fa-magic"></i>
+                    </button>
+                    {% endif %}
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="document.getElementById('helpPopup').classList.toggle('d-none')" title="How to Use">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <button onclick="closeSplitView()" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-times me-1"></i>Close
+                    </button>
+                </div>
+            </div>
+
+            <!-- Help Popup -->
+            <div id="helpPopup" class="d-none position-absolute rounded shadow-lg p-3" style="right: 20px; top: 60px; z-index: 1050; max-width: 320px; background: var(--bg-card); border: 1px solid var(--border-color);">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 fw-bold" style="color: var(--info-color);"><i class="fas fa-info-circle me-1"></i>How to Use</h6>
+                    <button type="button" class="btn-close btn-sm" onclick="document.getElementById('helpPopup').classList.add('d-none')" aria-label="Close help"></button>
+                </div>
+                <div class="small" style="color: var(--text-primary);">
+                    <p class="mb-2"><strong><i class="fas fa-file-import me-1" style="color: var(--primary-accent);"></i>Raw file:</strong> Upload the file generated from the Attendance Generator. With Auto-Extract on, the attendance data is pulled out automatically.</p>
+                    <p class="mb-2"><strong><i class="fas fa-layer-group me-1" style="color: var(--primary-accent);"></i>Bulk upload:</strong> Select several raw files at once in the Raw field and a pair is created for each one automatically -- the master file/batch you set on the first pair carries over to the rest.</p>
+                    <p class="mb-2"><strong><i class="fas fa-database me-1" style="color: var(--success-color);"></i>Master file:</strong> Select a batch from the available batches, or upload your own batch (student list) file in CSV/Excel format.</p>
+                    <p class="mb-0"><strong><i class="fas fa-download me-1" style="color: var(--warning-color);"></i>Results:</strong> Download matched results with confidence scores and unmatched items.</p>
+                </div>
+            </div>
+            
+            <form id="splitViewMatchingForm" method="POST" action="/process_attendance_matching" enctype="multipart/form-data" data-progress="smart-matcher">
+                {{ csrf_field() }}
+                <input type="hidden" id="split_pair_count" name="pair_count" value="1">
+                
+                <!-- Global Group Selection (Visible if batch matching is allowed) -->
+                {% if session.role == 'superadmin' or can_use_batch_matching %}
+                {% if groups|length == 1 %}
+                <div class="mb-2 d-inline-flex align-items-center gap-1" id="global-group-wrapper" style="font-size: 0.75rem; color: var(--text-secondary);">
+                    <i class="fas fa-users" style="color: var(--primary-accent);"></i>
+                    <span style="color: var(--text-primary);">{{ groups[0].name }}</span>
+                </div>
+                <select class="d-none" id="global_group_id">
+                    <option value="">Select Group...</option>
+                    <option value="{{ groups[0].id }}" selected>{{ groups[0].name }}</option>
+                </select>
+                {% else %}
+                <div class="mb-2 py-1 px-2 border rounded d-inline-flex align-items-center gap-2" id="global-group-wrapper" style="background: var(--bg-elevated); border-color: var(--border-color) !important; max-width: 320px;">
+                    <label class="form-label small fw-semibold mb-0 text-nowrap" for="global_group_id" style="font-size: 0.7rem; color: var(--text-secondary);"><i class="fas fa-users me-1" style="color: var(--primary-accent);"></i>Group</label>
+                    <select class="form-select form-select-sm" id="global_group_id" style="width: 200px; font-size: 0.7rem; height: 24px; padding: 2px 1.5rem 2px 6px; background: var(--bg-card) !important; color: var(--text-primary) !important; border-color: var(--border-color); -webkit-appearance: none; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2300D9FF%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.4rem center; background-size: 0.85rem;">
+                        <option value="">Select Group...</option>
+                    </select>
+                </div>
+                {% endif %}
+                {% endif %}
+                
+                <!-- File Pairs Header -->
+                <div class="d-flex align-items-center justify-content-between mb-1 px-1">
+                    <span class="fw-semibold small" style="color: var(--text-secondary);">
+                        <i class="fas fa-layer-group me-1"></i>File Pairs
+                    </span>
+                    <button type="button" id="split-add-pair-btn" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.7rem;">
+                        <i class="fas fa-plus me-1"></i>Add Pair
+                    </button>
+                </div>
+                
+                <!-- File Pairs Container - Expands to show all pairs -->
+                <div id="split-file-pairs-container" style="overflow-y: auto; margin-bottom: 0.5rem;">
+                    <!-- Initial File Pair -->
+                    <div class="file-pair-row card border mb-1" data-pair-index="0" data-status="incomplete" style="border-radius: 6px !important;">
+                        <div class="card-header pair-header py-1 px-2 d-flex align-items-center justify-content-between" style="cursor: pointer; min-height: 28px;" onclick="togglePairCollapse(this);">
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="badge bg-primary rounded-pill" style="font-size: 0.6rem; padding: 2px 6px;">1</span>
+                                <span class="fw-semibold pair-title" style="font-size: 0.7rem;">Pair</span>
+                                <span class="pair-status-text text-muted" style="font-size: 0.65rem;"></span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="pair-status-icon"></span>
+                                <i class="fas fa-chevron-up collapse-icon text-muted" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+                        <div class="card-body p-1 pair-body">
+                            <div class="d-flex gap-2">
+                                <div style="flex: 1; min-width: 0;">
+                                    <label class="form-label mb-0" style="font-size: 0.65rem; font-weight: 600;">
+                                        <i class="fas fa-file-alt text-primary me-1"></i>Master
+                                    </label>
+                                    <div id="master-source-selector-0"></div>
+                                    <div class="master-file-wrapper" id="master-file-wrapper-0" style="display: none;">
+                                        <input class="form-control form-control-sm master-input" type="file" name="master_file_0" accept=".csv,.xlsx" style="font-size: 0.65rem; padding: 2px 4px; height: 26px;" disabled onchange="updatePairStatus(0);">
+                                    </div>
+                                    <div class="master-batch-wrapper" id="master-batch-wrapper-0">
+                                        <select class="form-select form-select-sm" name="batch_id_0" id="batch_id_0" style="font-size: 0.65rem; padding: 2px 4px; height: 26px;" onchange="updatePairStatus(0);"></select>
+                                    </div>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <label class="form-label mb-0" style="font-size: 0.65rem; font-weight: 600;">
+                                        <i class="fas fa-file-import text-success me-1"></i>Raw
+                                    </label>
+                                    <div id="raw-spacer-0"></div>
+                                    <input class="form-control form-control-sm raw-input" type="file" name="raw_file_0" accept=".csv,.xlsx" multiple required title="Select multiple files to bulk-create a pair per file" style="font-size: 0.65rem; padding: 2px 4px; height: 26px;" onchange="updatePairStatus(0);">
+                                    <div class="text-muted" style="font-size: 0.6rem; line-height: 1.2;"><i class="fas fa-layer-group me-1"></i>Select several files to bulk-add a pair per file</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Auto-Extract Option -->
+                <div class="alert alert-info py-1 px-2 mb-2" style="font-size: 0.7rem; background: rgba(0, 217, 255, 0.1); border: 1px solid rgba(0, 217, 255, 0.3);">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" name="auto_extract" id="autoExtract" value="1" checked style="transform: scale(0.9);">
+                        <label class="form-check-label" for="autoExtract" style="font-size: 0.72rem;">
+                            <i class="fas fa-magic me-1" style="color: var(--primary-accent);"></i>
+                            <strong>Auto-Extract:</strong> Upload Attendance Generator output directly as Raw file (extracts attendance data automatically)
+                        </label>
+                    </div>
+                </div>
+                
+                {% if session.role == 'superadmin' or can_use_batch_matching %}
+                <div class="form-check py-0 px-1 mb-1">
+                    <input class="form-check-input" type="checkbox" name="include_institute_email" id="splitIncludeInstituteEmail" value="1" style="transform: scale(0.85);">
+                    <label class="form-check-label" for="splitIncludeInstituteEmail" style="font-size: 0.7rem; color: var(--text-secondary);">
+                        Include Institute Email in generated file <span class="text-muted">(batch mode only, if saved on the student)</span>
+                    </label>
+                </div>
+                {% endif %}
+
+                <!-- Bottom Section: Output + Submit -->
+                <div class="d-flex align-items-center justify-content-between gap-2 pt-2" style="border-top: 1px solid var(--border-color);">
+                    <div class="d-flex align-items-center gap-2 small" style="color: var(--text-secondary);">
+                        <span style="font-size: 0.75rem;"><i class="fas fa-cog me-1"></i>Output:</span>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="output_format" id="xlsxFormat" value="xlsx" checked style="transform: scale(0.85);">
+                            <label class="form-check-label" for="xlsxFormat" style="font-size: 0.75rem;">Excel</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="output_format" id="csvFormat" value="csv" style="transform: scale(0.85);">
+                            <label class="form-check-label" for="csvFormat" style="font-size: 0.75rem;">CSV</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm" id="submitBtn">
+                        <i class="fas fa-play me-1"></i>Start Matching
+                    </button>
+                </div>
+                
+                <!-- Processing Status -->
+                <div id="matching-results" class="mt-2" style="display: none;">
+                    <div class="alert alert-info py-1 px-2 d-flex align-items-center mb-0" style="font-size: 0.75rem;">
+                        <div class="spinner-border spinner-border-sm me-2" role="status" style="width: 14px; height: 14px;"></div>
+                        <span><strong>Processing...</strong></span>
+                    </div>
+                </div>
+            </form>
+        `
+    };
+    
+    // Click handlers for tool cards in default view
+    clickableTools.forEach(card => {
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            const toolId = this.getAttribute('data-tool');
+            enterSplitMode(toolId);
+        });
+    });
+    
+    // Click handlers for sidebar items in split view
+    sidebarItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const toolId = this.getAttribute('data-tool');
+            switchTool(toolId);
+        });
+    });
+    
+    // "Back to All Tools" always shows the tool list here, even when the panel
+    // was opened from the dashboard -- that is what the button says it does.
+    if (closeSplitModeBtn) {
+        closeSplitModeBtn.addEventListener('click', function() {
+            closeSplitView(false);
+        });
+    }
+    
+    // ========== MOBILE MENU FUNCTIONALITY ==========
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mobileSidebarOverlay = document.getElementById('mobileSidebarOverlay');
+    const toolSidebar = document.getElementById('toolSidebar');
+    
+    // Toggle mobile sidebar
+    if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toolSidebar.classList.toggle('mobile-active');
+            mobileSidebarOverlay.classList.toggle('active');
+        });
+    }
+    
+    // Close sidebar when clicking overlay
+    if (mobileSidebarOverlay) {
+        mobileSidebarOverlay.addEventListener('click', function() {
+            toolSidebar.classList.remove('mobile-active');
+            mobileSidebarOverlay.classList.remove('active');
+        });
+    }
+    
+    // Close sidebar when switching tools on mobile
+    sidebarItems.forEach(item => {
+        item.addEventListener('click', function() {
+            // Close mobile sidebar after selecting a tool
+            if (window.innerWidth <= 768) {
+                toolSidebar.classList.remove('mobile-active');
+                mobileSidebarOverlay.classList.remove('active');
+            }
+        });
+    });
+    
+    // Close sidebar when clicking "Back to All Tools" on mobile
+    if (closeSplitModeBtn) {
+        closeSplitModeBtn.addEventListener('click', function() {
+            toolSidebar.classList.remove('mobile-active');
+            mobileSidebarOverlay.classList.remove('active');
+        });
+    }
+    
+    // Enter split mode from default view
+    function enterSplitMode(toolId) {
+        // Fade out default view
+        defaultView.style.opacity = '0';
+
+        setTimeout(() => {
+            defaultView.style.display = 'none';
+            splitView.style.display = 'flex';
+
+            // Header shows only the theme switcher while Quick Switch is open
+            document.body.classList.add('split-mode-active');
+            
+            // Load tool content
+            loadTool(toolId);
+            
+            // Fade in split view
+            splitView.style.opacity = '0';
+            setTimeout(() => {
+                splitView.style.opacity = '1';
+            }, 50);
+        }, 300);
+    }
+    
+    // Helper functions for Smart Matcher are loaded from smart-matcher.js
+    
+    // Load tool into panel
+    function loadTool(toolId) {
+        toolPanel.innerHTML = toolTemplates[toolId] || '<p>Tool content not found</p>';
+        
+        // Highlight active sidebar item
+        sidebarItems.forEach(item => {
+            if (item.getAttribute('data-tool') === toolId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        // Initialize file pairing functionality for smart matcher
+        if (toolId === 'smart-matcher') {
+            // Set reload time for debug alert
+            const reloadTimeEl = document.getElementById('reload-time');
+            if (reloadTimeEl) {
+                reloadTimeEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+            // Initialize the Smart Matcher functionality first (sets up hierarchical selectors)
+            initializeSmartMatcher('splitViewMatchingForm', 'split-add-pair-btn', 'split-file-pairs-container', 'split_pair_count', true);
+            
+            // Initialize batch selection if available (must come AFTER initializeSmartMatcher)
+            if (canUseBatchMatching && batchesData.length > 0) {
+                initializeBatchSelection(0);
+            }
+        }
+        
+        // Initialize Final Excel Generator if needed
+        if (toolId === 'final-excel-generator') {
+            // Batch is auto-detected server-side from the uploaded roster -- no selection needed here.
+        }
+
+        // Scroll to top
+        toolPanel.scrollTop = 0;
+    }
+    
+    // Switch tools in split mode
+    function switchTool(toolId) {
+        toolPanel.style.opacity = '0';
+        
+        setTimeout(() => {
+            loadTool(toolId);
+            toolPanel.style.opacity = '1';
+        }, 200);
+    }
+    
+    // Handle Smart Matcher form submission (handled by external smart-matcher.js)
+    
+    // Where the panel was opened from, so closing a tool goes back there.
+    // null = opened from this page, so closing just shows the tool list again.
+    let splitOrigin = null;
+
+    // Close split view. returnToOrigin=false forces the on-page tool list.
+    window.closeSplitView = function(returnToOrigin = true) {
+        if (returnToOrigin && splitOrigin) {
+            window.location.href = splitOrigin;
+            return;
+        }
+
+        splitView.style.opacity = '0';
+        
+        setTimeout(() => {
+            splitView.style.display = 'none';
+            defaultView.style.display = 'block';
+
+            // Restore the full header (logo + account icon)
+            document.body.classList.remove('split-mode-active');
+            
+            // Fade in default view
+            defaultView.style.opacity = '0';
+            setTimeout(() => {
+                defaultView.style.opacity = '1';
+            }, 50);
+        }, 300);
+    };
+
+    // Deep link: /?tool=<id> (used by the dashboard's "Continue Working"
+    // buttons). The panel is already on screen -- the server rendered the page
+    // in split mode -- so only its content still needs loading. `from=dashboard`
+    // sends the user back to the dashboard when they close the tool, and the
+    // parameters are dropped from the URL so a refresh shows the normal home view.
+    const initialTool = {{ (initial_tool | tojson) if initial_tool else 'null' }};
+    if (initialTool && toolTemplates.hasOwnProperty(initialTool)) {
+        {% if initial_tool_origin == 'dashboard' %}
+        splitOrigin = "{{ url_for('dashboard') }}";
+        {% endif %}
+        loadTool(initialTool);
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/home-premium.js') }}?v=3"></script>
+{% endblock %}

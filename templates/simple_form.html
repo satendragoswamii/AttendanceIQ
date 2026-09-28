@@ -1,0 +1,44 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}{{ title }} - {{ site_settings.app_name }}{% endblock %}
+
+{% block content %}
+{# Generic single-purpose form. Used by the Create Batch / Edit Batch routes,
+   which render a field list rather than a bespoke template. #}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); color: white;">
+                <h5 class="mb-0"><i class="fas fa-pen-to-square me-2"></i>{{ title }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ form_action }}">
+                    {{ csrf_field() }}
+                    {% for field in fields %}
+                    <div class="mb-3">
+                        <label class="form-label" for="field-{{ field.name }}">
+                            {{ field.label }}{% if field.required %} <span class="text-danger">*</span>{% endif %}
+                        </label>
+                        <input type="{{ field.type|default('text') }}"
+                               class="form-control"
+                               id="field-{{ field.name }}"
+                               name="{{ field.name }}"
+                               value="{{ field.value|default('') }}"
+                               {% if field.required %}required{% endif %}>
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{{ url_for('manage_batches') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

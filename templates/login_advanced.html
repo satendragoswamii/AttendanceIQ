@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" style="--glass-alpha: {{ site_settings.glass_opacity / 100 }};">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - {{ site_settings.app_name }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/attendancify-modern.css') }}?v=2.3">
+    <style>
+        /* Login Page Specific Styles */
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 1rem;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Soft blur overlay so tiles don't peek through */
+        .background-blur-layer {
+            position: fixed;
+            inset: 0;
+            backdrop-filter: blur(14px);
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        /* App background sits above the body but below the blur layer + card.
+           Geometry matches the shared rule (12px bleed for the parallax shift). */
+        #particles-background {
+            position: fixed;
+            top: -12px;
+            left: -12px;
+            width: calc(100% + 24px);
+            height: calc(100% + 24px);
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .login-page-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 420px;
+            padding: 1.25rem;
+            margin: auto;
+        }
+        
+        /* Modern Login Card - Same as Modal */
+        .modern-login-card {
+            background: var(--bg-elevated);
+            border-radius: 18px;
+            padding: 1.75rem 1.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Logo/Brand Section */
+        .login-brand-section {
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+        
+        .login-icon-wrapper {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 0.65rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            color: white;
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+        }
+        
+        .login-brand-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.2rem;
+        }
+        
+        .login-brand-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+        
+        /* Alert Messages */
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border: none;
+            font-size: 0.85rem;
+            padding: 0.65rem 0.85rem;
+        }
+        
+        /* Footer */
+        .login-page-footer {
+            position: fixed;
+            bottom: 0.75rem;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            z-index: 1;
+        }
+        
+        .login-page-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .login-page-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body data-cursor-effect="{{ site_settings.cursor_effect }}" data-fluid-config='{{ site_settings.fluid | tojson }}' data-cursor-glow-shape="{{ site_settings.cursor_glow_shape }}" style="--cursor-glow-color: {{ site_settings.cursor_glow_color }}; --cursor-glow-size: {{ site_settings.cursor_glow_size }}px; --cursor-glow-opacity: {{ site_settings.cursor_glow_opacity / 100 }};">
+    <div class="background-blur-layer"></div>
+    <canvas id="fluid" aria-hidden="true"></canvas>
+    <!-- App Background: glows + animated particles (same on every page) -->
+    <div id="particles-background" aria-hidden="true">
+        <div class="app-bg-glow"></div>
+        <div id="app-particles"></div>
+    </div>
+    
+    <div class="login-page-container">
+        <div class="modern-login-card">
+            <!-- Logo/Brand Section -->
+            <div class="login-brand-section">
+                <div class="login-icon-wrapper">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <h3 class="login-brand-title">Welcome Back</h3>
+                <p class="login-brand-subtitle">Sign in to access {{ site_settings.app_name }}</p>
+            </div>
+            
+            <!-- Alert Messages -->
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set alert_class = {'error': 'alert-danger', 'success': 'alert-success', 'warning': 'alert-warning'}.get(category, 'alert-info') %}
+                        {% set alert_icon = {'error': 'fa-exclamation-circle', 'success': 'fa-check-circle', 'warning': 'fa-exclamation-triangle'}.get(category, 'fa-info-circle') %}
+                        <div class="alert {{ alert_class }} alert-dismissible fade show" role="alert">
+                            <i class="fas {{ alert_icon }} me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Login Form -->
+            <div class="login-form-section">
+                <form id="loginForm" method="POST">
+                    {{ csrf_field() }}
+                    <!-- Email Input -->
+                    <div class="modern-input-group">
+                        <label for="email" class="modern-label">
+                            <i class="fas fa-envelope me-2"></i>Email Address
+                        </label>
+                        <div class="modern-input-wrapper">
+                            <input type="email" 
+                                   class="form-control modern-input" 
+                                   id="email" 
+                                   name="email" 
+                                   placeholder="your.email@example.com"
+                                   required
+                                   autocomplete="email">
+                            <span class="input-border-animation"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Password Input -->
+                    <div class="modern-input-group">
+                        <label for="password" class="modern-label">
+                            <i class="fas fa-lock me-2"></i>Password
+                        </label>
+                        <div class="modern-input-wrapper password-wrapper">
+                            <input type="password" 
+                                   class="form-control modern-input" 
+                                   id="password" 
+                                   name="password" 
+                                   placeholder="Enter your password"
+                                   required
+                                   autocomplete="current-password">
+                            <button type="button" class="modern-toggle-password" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <span class="input-border-animation"></span>
+                        </div>
+                    </div>
+
+                    <!-- App Selector -->
+                    <div class="modern-input-group">
+                        <label for="target_app" class="modern-label">
+                            <i class="fas fa-th-large me-2"></i>Sign in to
+                        </label>
+                        <div class="modern-input-wrapper">
+                            <select class="form-select modern-input" id="target_app" name="target_app">
+                                {# Label follows Settings -> Site Name, so the brand is written in one place. #}
+                                <option value="attendancify" selected>{{ site_settings.app_name }}</option>
+                                <option value="tango">Tango</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Login Button -->
+                    <button type="submit" class="btn modern-login-btn">
+                        <span class="btn-text">Sign In</span>
+                        <span class="btn-icon"><i class="fas fa-arrow-right"></i></span>
+                    </button>
+                </form>
+                
+                <!-- Divider -->
+                <div class="login-divider">
+                    <span>or</span>
+                </div>
+                
+                <!-- Contact Admin Section -->
+                <div class="login-contact-section">
+                    <p class="contact-text">Don't have an account?</p>
+                    <div class="admin-contact-card">
+                        <div class="admin-info">
+                            <i class="fas fa-user-shield admin-icon"></i>
+                            <div class="admin-details">
+                                <strong class="admin-name">Contact Admin</strong>
+                                <span class="admin-title">{{ site_settings.footer_author }}</span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="mailto:{{ site_settings.footer_email }}"
+                               class="instagram-btn"
+                               title="{{ site_settings.footer_email }}">
+                                <i class="fas fa-envelope"></i>
+                                <span>Email</span>
+                            </a>
+                            <a href="{{ site_settings.footer_link }}"
+                               target="_blank"
+                               class="instagram-btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                <span>Contact</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="login-page-footer">
+        &copy; {{ site_settings.current_year }} {{ site_settings.app_name }} |
+        <a href="{{ site_settings.footer_link }}" target="_blank">{{ site_settings.footer_text }} {{ site_settings.footer_author }}</a>
+        | <a href="mailto:{{ site_settings.footer_email }}"><i class="fas fa-envelope me-1"></i>{{ site_settings.footer_email }}</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app-background.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/fluid-cursor.js') }}?v=1"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Password visibility toggle
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                // Toggle eye icon
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-eye');
+                    icon.classList.toggle('fa-eye-slash');
+                }
+            });
+        }
+        
+        // Form submission with loading state
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', function() {
+                const submitButton = this.querySelector('.modern-login-btn');
+                if (submitButton) {
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Authenticating...';
+                    submitButton.disabled = true;
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>

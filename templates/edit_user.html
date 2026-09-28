@@ -1,0 +1,155 @@
+{% extends "base_comprehensive.html" %}
+
+{% block title %}Edit User - {{ site_settings.app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3><i class="fas fa-user-edit me-2"></i>Edit User</h3>
+                <a href="{{ url_for('admin_panel') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Admin Panel
+                </a>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ csrf_field() }}
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user_id }}">
+                        <div class="form-text">Only superadmins can change email addresses</div>
+                    </div>
+                    {% if session.role == 'superadmin' or session.can_manage_roles %}
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="user" {% if user.role == 'user' %}selected{% endif %}>Normal User</option>
+                            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                            {% if session.role == 'superadmin' %}
+                            <option value="subsuperadmin" {% if user.role == 'subsuperadmin' %}selected{% endif %}>Sub-Superadmin</option>
+                            <option value="superadmin" {% if user.role == 'superadmin' %}selected{% endif %}>Superadmin</option>
+                            {% endif %}
+                        </select>
+                        <div class="form-text">
+                            <strong>Normal User:</strong> Basic access.<br>
+                            <strong>Admin:</strong> Can manage users they created.<br>
+                            <strong>Sub-Superadmin:</strong> Extended permissions controlled by Superadmin.<br>
+                            <strong>Superadmin:</strong> Full system access.
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="expires_at" class="form-label">Expiration Date</label>
+                        <input type="datetime-local" class="form-control" id="expires_at" name="expires_at" 
+                               value="{% if user.expires_at %}{{ user.expires_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                        <div class="form-text">Leave blank for permanent accounts</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Change Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" placeholder="Enter new password">
+                        <div class="form-text">Leave blank to keep current password. Only admins and superadmins can change passwords.</div>
+                    </div>
+                    
+                    <!-- Batch Matcher Permission, only visible to superadmin or admins allowed by superadmin -->
+                    {% if session.role == 'superadmin' or session.can_manage_batch_matching %}
+                    <div class="mb-3">
+                        <label class="form-label">Feature Permissions</label>
+                        <div class="card" style="background: var(--bg-elevated); border: 1px solid var(--border-color);">
+                            <div class="card-body py-2 px-3">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_use_batch_matching" name="can_use_batch_matching" value="1" {% if user.can_use_batch_matching %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_use_batch_matching">
+                                        <i class="fas fa-database me-1 text-primary"></i>
+                                        <strong>Batch Matching</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text mb-2">Allow user to select predefined batches in Smart Matcher instead of uploading master files.</div>
+                                {% if session.role == 'superadmin' %}
+                                <hr class="my-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_access_processed_files" name="can_access_processed_files" value="1" {% if user.can_access_processed_files %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_access_processed_files">
+                                        <i class="fas fa-file-download me-1 text-success"></i>
+                                        <strong>Access Processed Files</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text mt-1">Allow user to access and download their own processed files from Attendance Generator and Smart Matcher.</div>
+                                <hr class="my-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_view_dashboard" name="can_view_dashboard" value="1" {% if user.can_view_dashboard %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_view_dashboard">
+                                        <i class="fas fa-chart-line me-1 text-info"></i>
+                                        <strong>View Dashboard</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text mt-1">Allow user to view dashboard with their own usage statistics and time saved.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if session.role == 'superadmin' %}
+                    <!-- Superadmin-only: grant admin-level management permissions to this user -->
+                    <div class="mb-3">
+                        <label class="form-label">Admin Management Permissions</label>
+                        <div class="card" style="background: var(--bg-elevated); border: 1px solid var(--border-color);">
+                            <div class="card-body py-2 px-3">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_manage_roles" name="can_manage_roles" value="1" {% if user.can_manage_roles %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_manage_roles">
+                                        <i class="fas fa-user-shield me-1 text-primary"></i>
+                                        <strong>Can manage roles</strong>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_manage_batch_matching" name="can_manage_batch_matching" value="1" {% if user.can_manage_batch_matching %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_manage_batch_matching">
+                                        <i class="fas fa-sliders-h me-1 text-primary"></i>
+                                        <strong>Can manage batch matching</strong>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_manage_batches" name="can_manage_batches" value="1" {% if user.can_manage_batches %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_manage_batches">
+                                        <i class="fas fa-layer-group me-1 text-success"></i>
+                                        <strong>Can manage batches</strong>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="can_access_tango" name="can_access_tango" value="1" {% if user.can_access_tango %}checked{% endif %}>
+                                    <label class="form-check-label" for="can_access_tango">
+                                        <i class="fas fa-envelope-open-text me-1 text-info"></i>
+                                        <strong>Can access Tango</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text mt-1">These permissions allow trusted users to access Batch Management page, change other users' roles, and batch-matching access. <strong>Can access Tango</strong> opens the Faculty Invite generator and works for any role, including normal users &mdash; Tango handles faculty contact details, so grant it deliberately.</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
